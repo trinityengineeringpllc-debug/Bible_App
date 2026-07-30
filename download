@@ -1,0 +1,24 @@
+# Built corpus — regenerate with pipeline/build_corpus.py, never commit.
+# It is large, derived, and reproducible from sources.yaml.
+client/data/corpus.db
+client/data/*.db-journal
+
+# Raw downloads from the pipeline
+pipeline/sources/
+pipeline/.cache/
+
+# Secrets — API keys live in Catalyst environment variables, never here
+.env
+.env.*
+!.env.example
+
+# Catalyst
+.catalyst/
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
