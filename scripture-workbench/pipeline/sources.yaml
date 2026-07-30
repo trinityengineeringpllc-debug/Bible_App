@@ -1,0 +1,70 @@
+# Every corpus source, its URL, its license, and where it lands.
+# build_corpus.py reads this. Adding a source means adding an entry here and
+# an importer module — never a hardcoded URL in the build script.
+#
+# Before adding anything: read docs/data-sources.md. If a source does not fall
+# cleanly into Bucket 1 it does not belong in corpus.db.
+
+sources:
+
+  - id: stepbible
+    name: STEPBible-Data
+    license: CC BY 4.0
+    attribution_required: true
+    repo: https://github.com/STEPBible/STEPBible-Data
+    branch: master
+    importer: importers.stepbible
+    # VERIFIED paths. Files live in subfolders, not the repo root:
+    #   Lexicons/                        TBESG, TBESH, TFLSJ
+    #   Translators Amalgamated OT+NT/   TAGNT, TAHOT
+    #   Tagged-Bibles/                   TTESV
+    #   (repo root)                      TIPNR, TVTMS, TEGMC, TEHMC
+    #
+    # Filenames contain spaces and must be URL-encoded when fetching from
+    # raw.githubusercontent.com. Resolve them via the GitHub contents API at
+    # download time rather than hardcoding -- names have already changed once
+    # ("Tyndale" became "Translators"). Note the API rate-limits unauthenticated
+    # requests to 60/hour; a token in .env avoids that.
+    #
+    # Confirmed working:
+    #   Lexicons/TBESG - Translators Brief lexicon of Extended Strongs for Greek - STEPBible.org CC BY.txt
+    files:
+      - TAGNT      # Greek NT, tagged, with edition markers -> tokens, token_editions
+      - TAHOT      # Hebrew OT, tagged                      -> tokens
+      - TBESG      # Greek extended Strong's lexicon        -> lexicon
+      - TBESH      # Hebrew extended Strong's lexicon       -> lexicon
+      - TFLSJ      # Full LSJ                               -> lexicon (deep)
+      - TEGMC      # Greek morphology code expansions       -> morph decoder
+      - TEHMC      # Hebrew morphology code expansions      -> morph decoder
+      - TIPNR      # Proper names with references           -> proper_names
+      - TVTMS      # Versification traditions               -> versification_map
+
+  - id: ttesv
+    name: Tyndale translation tags for ESV
+    license: CC BY-NC 4.0
+    attribution_required: true
+    repo: https://github.com/STEPBible/STEPBible-Data
+    importer: importers.ttesv
+    # CRITICAL: strip the ESV surface-form column. Keep position + Strong's only.
+    # Storing the tags is permitted; storing the words they attach to is not.
+    strip_columns: [surface_form]
+
+  - id: asv
+    name: American Standard Version 1901
+    license: Public domain
+    repo: https://github.com/openbibleinfo/American-Standard-Version-Bible
+    format: USX
+    importer: importers.usx
+
+  - id: openbible_xrefs
+    name: OpenBible cross-references
+    license: CC BY
+    attribution_required: true
+    url: https://www.openbible.info/labs/cross-references/
+    importer: importers.crossrefs
+
+# Sources deliberately NOT listed, and why:
+#
+#   ESV   — licensed. Fetched live via functions/scripture-proxy. Never stored.
+#   NKJV  — licensed. Via API.Bible. Never stored.
+#   Thompson Chain — no licensed dataset exists. Use the chains tables instead.

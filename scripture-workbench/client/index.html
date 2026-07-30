@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripture Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Frank+Ruhl+Libre:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="pane rail">
+    <div class="brand">
+      <h1>Scripture<br>Workbench</h1>
+      <div class="sub">seed corpus &middot; v0.2</div>
+    </div>
+
+    <nav class="mode-nav" id="mode-nav">
+      <button data-mode="read" aria-current="true">Read</button>
+      <button data-mode="commentary">Commentary</button>
+      <button data-mode="coverage">Coverage</button>
+      <button data-mode="search">Search</button>
+    </nav>
+
+    <div class="rail-section" id="rail-passages">
+      <span class="label">passages</span>
+      <ul class="passage-list" id="passage-list"></ul>
+    </div>
+
+    <div class="rail-section">
+      <span class="label">tags</span>
+      <div class="tag-cloud" id="tag-cloud"></div>
+    </div>
+
+    <div class="rail-stat" id="rail-stat"></div>
+    <div class="rail-note" id="store-warning" hidden></div>
+  </aside>
+
+  <div class="workspace" id="workspace">
+
+    <div class="three-pane" id="three-pane">
+
+      <main class="pane text-pane">
+        <div class="pane-head">
+          <span class="label" id="text-head">text</span>
+          <span class="count" id="text-count"></span>
+        </div>
+        <div class="version-bar" id="version-bar"></div>
+        <div id="text-body"></div>
+      </main>
+
+      <section class="pane expo-pane">
+        <div class="pane-head"><span class="label">exposition</span></div>
+        <div id="expo-body"></div>
+      </section>
+
+      <section class="pane notes-pane">
+        <div class="pane-head">
+          <span class="label">comment</span>
+          <span class="count" id="notes-count">0</span>
+        </div>
+
+        <div class="compose">
+          <div class="compose-target" id="compose-target"></div>
+          <input id="note-title" type="text" placeholder="Heading (optional)" autocomplete="off">
+          <textarea id="note-body" placeholder="Comment on this verse&hellip;"></textarea>
+          <input id="note-tags" type="text" placeholder="Tags, comma separated" autocomplete="off">
+          <div class="compose-row">
+            <button class="btn" id="note-save">Save comment</button>
+            <button class="btn ghost" id="note-clear">Clear</button>
+            <button class="btn ghost" id="note-essay" title="Write a standalone piece linked to this passage">Essay&hellip;</button>
+          </div>
+          <div class="compose-hint" id="compose-hint"></div>
+        </div>
+
+        <div id="notes-body"></div>
+      </section>
+
+    </div>
+
+    <section class="pane wide" id="wide-view" hidden>
+      <div class="pane-head">
+        <span class="label" id="wide-head"></span>
+        <span class="count" id="wide-count"></span>
+      </div>
+      <div id="wide-body"></div>
+    </section>
+
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,2493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scripture Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Frank+Ruhl+Libre:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   Scripture Workbench
+
+   Direction: a reading instrument, not a devotional app. The reference points
+   are a laboratory notebook and a technical terminal rather than a printed
+   Bible — this is a workbench where evidence is examined, so the surface is
+   dark and the type is the illuminated element.
+
+   Three accents, each carrying a distinct class of information and nothing
+   else. They are structural, not decorative:
+     verdigris  lexical   — a word carries Strong's data and can be opened
+     rubric     textual   — the editions disagree here
+     amber      editorial — your own work is anchored here
+   ========================================================================== */
+
+:root {
+  /* ground */
+  --ink-900: #0e171c;
+  --ink-850: #121e24;
+  --ink-800: #17262d;
+  --ink-700: #1e323a;
+  --ink-600: #26414a;
+  --rule:    #2b4650;
+  --rule-soft: #1f353d;
+
+  /* type */
+  --text:   #e4dfd2;
+  --text-2: #9db0b7;
+  --text-3: #61787f;
+
+  /* accents — one job each */
+  --verdigris: #74b3a5;
+  --verdigris-dim: #3d6a63;
+  --rubric: #cd6b55;
+  --amber: #d7a548;
+
+  /* faces */
+  --scripture: 'EB Garamond', 'Cardo', Georgia, serif;
+  --hebrew: 'Frank Ruhl Libre', 'EB Garamond', serif;
+  --ui: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --code: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --rail: 13.5rem;
+  --ease: cubic-bezier(.22,.61,.36,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%; margin: 0;
+  background: var(--ink-900);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--verdigris);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+/* --- shared label style --------------------------------------------------- */
+
+.label {
+  font-family: var(--ui);
+  font-size: .625rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* --- shell ---------------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--rail) minmax(0, 1.15fr) minmax(0, .85fr) minmax(0, .85fr);
+  height: 100vh;
+}
+
+.pane {
+  min-width: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--rule-soft);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-600) transparent;
+}
+.pane::-webkit-scrollbar { width: 9px; }
+.pane::-webkit-scrollbar-thumb { background: var(--ink-600); border-radius: 9px; }
+.pane::-webkit-scrollbar-track { background: transparent; }
+
+.pane-head {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: baseline; gap: .6rem;
+  padding: .85rem 1.1rem .7rem;
+  background: linear-gradient(var(--ink-900) 72%, transparent);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.pane-head .count {
+  font-family: var(--code); font-size: .625rem; color: var(--text-3);
+  margin-left: auto;
+}
+
+/* --- rail ----------------------------------------------------------------- */
+
+.rail { background: var(--ink-850); border-left: none; padding-bottom: 2rem; }
+
+.brand { padding: 1.15rem 1.1rem .9rem; border-bottom: 1px solid var(--rule-soft); }
+.brand h1 {
+  margin: 0; font-family: var(--scripture);
+  font-size: 1.32rem; font-weight: 500; letter-spacing: .005em; line-height: 1.15;
+}
+.brand .sub {
+  margin-top: .3rem; font-family: var(--code);
+  font-size: .6rem; letter-spacing: .05em; color: var(--verdigris-dim);
+}
+
+.rail-section { padding: 1rem 1.1rem .3rem; }
+
+.passage-list { list-style: none; margin: .5rem 0 0; padding: 0; }
+.passage-list button {
+  display: block; width: 100%; text-align: left;
+  padding: .45rem .55rem; margin-bottom: .15rem;
+  border-radius: 3px; border-left: 2px solid transparent;
+  color: var(--text-2); font-size: .82rem; line-height: 1.3;
+  transition: background .12s var(--ease), color .12s var(--ease);
+}
+.passage-list button:hover { background: var(--ink-800); color: var(--text); }
+.passage-list button[aria-current="true"] {
+  background: var(--ink-800); color: var(--text); border-left-color: var(--verdigris);
+}
+.passage-list .ref {
+  display: block; font-family: var(--code);
+  font-size: .6rem; color: var(--text-3); margin-top: .12rem;
+}
+
+.tag-cloud { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .55rem; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .2rem .5rem; border-radius: 999px;
+  border: 1px solid var(--rule);
+  font-size: .68rem; color: var(--text-2);
+  transition: border-color .12s var(--ease), color .12s var(--ease);
+}
+.chip:hover { border-color: var(--verdigris-dim); color: var(--text); }
+.chip[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.chip .x { color: var(--text-3); font-size: .8rem; line-height: 1; }
+
+.rail-note {
+  margin: 1.2rem 1.1rem 0; padding: .6rem .7rem;
+  border-left: 2px solid var(--amber);
+  background: rgba(215,165,72,.06);
+  font-size: .7rem; line-height: 1.5; color: var(--text-2);
+}
+
+/* --- text pane ------------------------------------------------------------ */
+
+.text-pane { padding-bottom: 5rem; }
+
+.version-bar {
+  display: flex; gap: .3rem; padding: 0 1.1rem .7rem;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.version-bar button {
+  padding: .22rem .55rem; border-radius: 3px;
+  border: 1px solid transparent;
+  font-family: var(--code); font-size: .62rem; letter-spacing: .06em;
+  color: var(--text-3);
+}
+.version-bar button:hover { color: var(--text-2); }
+.version-bar button[aria-pressed="true"] {
+  color: var(--verdigris); border-color: var(--verdigris-dim);
+  background: rgba(116,179,165,.07);
+}
+.version-bar button[disabled] { opacity: .35; cursor: not-allowed; }
+
+.verse-block { border-bottom: 1px solid var(--rule-soft); }
+.verse-block:last-child { border-bottom: none; }
+
+.verse-row {
+  display: grid; grid-template-columns: 2.6rem 1fr;
+  padding: .9rem 1.1rem .3rem;
+  transition: background .12s var(--ease);
+}
+.verse-block[aria-selected="true"] .verse-row { background: rgba(116,179,165,.05); }
+
+.verse-num {
+  font-family: var(--code); font-size: .68rem;
+  color: var(--text-3); padding-top: .3rem;
+  display: flex; align-items: flex-start; gap: .3rem;
+}
+.verse-num button { color: inherit; }
+.verse-num button:hover { color: var(--verdigris); }
+.anchor-mark {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--amber); margin-top: .58rem;
+}
+
+.verse-body { font-family: var(--scripture); }
+
+.line-grc {
+  font-size: 1.16rem; line-height: 1.95;
+  margin-bottom: .35rem;
+}
+.line-eng {
+  font-size: 1.02rem; line-height: 1.62; color: var(--text);
+  margin-bottom: .3rem;
+}
+.line-eng .tr {
+  font-family: var(--code); font-size: .58rem;
+  letter-spacing: .07em; color: var(--text-3);
+  margin-right: .5rem; vertical-align: .18em;
+}
+.line-eng.pending { color: var(--text-3); font-style: italic; }
+
+.w {
+  border-radius: 2px; padding: 0 .06em;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: color .1s var(--ease), border-color .1s var(--ease);
+}
+.w:hover { color: var(--verdigris); border-bottom-color: var(--verdigris-dim); }
+.w[aria-pressed="true"] {
+  color: var(--verdigris);
+  border-bottom-color: var(--verdigris);
+  background: rgba(116,179,165,.09);
+}
+.w.variant { border-bottom: 1px dotted var(--rubric); }
+.w.variant::after {
+  content: '\00b0'; color: var(--rubric);
+  font-family: var(--code); font-size: .7em; vertical-align: .35em;
+}
+
+/* --- the word ribbon: signature element ----------------------------------- */
+
+.ribbon {
+  display: grid; grid-template-columns: 2.6rem 1fr;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .28s var(--ease);
+}
+.ribbon.open { max-height: 22rem; }
+.ribbon-body {
+  margin: 0 1.1rem .9rem 0;
+  padding: .75rem .9rem;
+  background: var(--ink-800);
+  border-left: 2px solid var(--verdigris);
+  border-radius: 0 3px 3px 0;
+}
+
+.ribbon-lemma {
+  display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+  margin-bottom: .55rem;
+}
+.ribbon-lemma .lemma {
+  font-family: var(--scripture); font-size: 1.28rem; color: var(--verdigris);
+}
+.ribbon-lemma .translit {
+  font-family: var(--code); font-size: .68rem; color: var(--text-3);
+}
+.ribbon-lemma .strongs {
+  margin-left: auto;
+  font-family: var(--code); font-size: .64rem; letter-spacing: .06em;
+  color: var(--text-2);
+  padding: .12rem .4rem; border: 1px solid var(--rule); border-radius: 2px;
+}
+.ribbon-gloss {
+  font-family: var(--scripture); font-size: .95rem;
+  color: var(--text); margin-bottom: .65rem;
+}
+
+.parse { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .65rem; }
+.parse-chip {
+  display: flex; flex-direction: column; gap: .1rem;
+  padding: .25rem .45rem;
+  background: var(--ink-700); border-radius: 2px;
+  border-top: 1px solid var(--ink-600);
+}
+.parse-chip .k {
+  font-family: var(--ui); font-size: .53rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.parse-chip .v { font-family: var(--code); font-size: .7rem; color: var(--text); }
+
+.apparatus { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; }
+.apparatus .label { margin-right: .2rem; }
+.ed {
+  font-family: var(--code); font-size: .58rem; letter-spacing: .04em;
+  padding: .1rem .32rem; border-radius: 2px;
+  border: 1px solid var(--rule-soft); color: var(--text-3);
+}
+.ed.present { color: var(--text-2); border-color: var(--rule); }
+.ed.absent { opacity: .3; text-decoration: line-through; }
+.apparatus.split .label { color: var(--rubric); }
+
+.ribbon-actions { display: flex; gap: .5rem; margin-top: .7rem; }
+.mini {
+  font-family: var(--ui); font-size: .66rem; letter-spacing: .04em;
+  padding: .28rem .6rem; border-radius: 2px;
+  border: 1px solid var(--rule); color: var(--text-2);
+  transition: border-color .12s var(--ease), color .12s var(--ease);
+}
+.mini:hover { border-color: var(--verdigris-dim); color: var(--verdigris); }
+
+/* --- exposition pane ------------------------------------------------------ */
+
+.expo-section { padding: .9rem 1.1rem; border-bottom: 1px solid var(--rule-soft); }
+.expo-section h3 { margin: 0 0 .55rem; }
+
+.lex-full {
+  font-family: var(--scripture); font-size: .95rem; line-height: 1.65;
+  color: var(--text-2); margin: .5rem 0 0;
+}
+.lex-head { display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap; }
+.lex-head .lemma { font-family: var(--scripture); font-size: 1.35rem; color: var(--text); }
+.lex-head .translit { font-family: var(--code); font-size: .7rem; color: var(--text-3); }
+.lex-head .pos {
+  font-family: var(--ui); font-size: .6rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--verdigris-dim);
+}
+.lex-short {
+  font-family: var(--scripture); font-size: 1.02rem;
+  color: var(--verdigris); margin: .4rem 0 0;
+}
+
+.xref-list { list-style: none; margin: 0; padding: 0; }
+.xref-list li { display: flex; align-items: center; gap: .55rem; padding: .28rem 0; }
+.xref-list .ref {
+  font-family: var(--scripture); font-size: .92rem; color: var(--text-2);
+}
+.xref-list li:hover .ref { color: var(--verdigris); }
+.weight {
+  margin-left: auto; height: 2px; border-radius: 2px;
+  background: var(--verdigris-dim); min-width: 6px;
+}
+
+.occurrences { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .5rem; }
+.occ {
+  font-family: var(--code); font-size: .6rem;
+  padding: .15rem .4rem; border-radius: 2px;
+  background: var(--ink-800); color: var(--text-2);
+}
+.occ:hover { color: var(--verdigris); }
+
+/* --- notes pane ----------------------------------------------------------- */
+
+.notes-pane { padding-bottom: 4rem; }
+
+.compose { padding: .9rem 1.1rem; border-bottom: 1px solid var(--rule-soft); }
+.compose-target {
+  font-family: var(--code); font-size: .62rem; letter-spacing: .05em;
+  color: var(--amber); margin-bottom: .5rem;
+}
+.compose input, .compose textarea, .compose select {
+  width: 100%; background: var(--ink-850);
+  border: 1px solid var(--rule-soft); border-radius: 3px;
+  color: var(--text); padding: .45rem .55rem; margin-bottom: .45rem;
+  font-family: var(--ui); font-size: .82rem;
+}
+.compose textarea {
+  font-family: var(--scripture); font-size: .95rem; line-height: 1.6;
+  min-height: 6.5rem; resize: vertical;
+}
+.compose input::placeholder, .compose textarea::placeholder { color: var(--text-3); }
+.compose input:focus, .compose textarea:focus, .compose select:focus {
+  border-color: var(--verdigris-dim); outline: none;
+}
+
+.compose-row { display: flex; gap: .45rem; align-items: center; }
+.btn {
+  font-family: var(--ui); font-size: .72rem; letter-spacing: .04em;
+  padding: .4rem .85rem; border-radius: 3px;
+  background: var(--verdigris); color: var(--ink-900); font-weight: 600;
+  transition: filter .12s var(--ease);
+}
+.btn:hover { filter: brightness(1.1); }
+.btn.ghost {
+  background: none; color: var(--text-3); font-weight: 400;
+  border: 1px solid var(--rule);
+}
+.btn.ghost:hover { color: var(--text-2); border-color: var(--rule); filter: none; }
+
+.note-card {
+  padding: .8rem 1.1rem; border-bottom: 1px solid var(--rule-soft);
+  border-left: 2px solid transparent;
+  transition: border-color .12s var(--ease), background .12s var(--ease);
+}
+.note-card:hover { background: var(--ink-850); border-left-color: var(--amber); }
+.note-card .meta {
+  display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem;
+}
+.note-type {
+  font-family: var(--ui); font-size: .55rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--amber);
+}
+.note-card h4 {
+  margin: 0 0 .3rem; font-family: var(--scripture);
+  font-size: 1.05rem; font-weight: 500;
+}
+.note-card .body {
+  font-family: var(--scripture); font-size: .92rem; line-height: 1.6;
+  color: var(--text-2); white-space: pre-wrap;
+}
+.note-card .anchors {
+  display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem;
+}
+.anchor-pill {
+  font-family: var(--code); font-size: .58rem;
+  padding: .12rem .38rem; border-radius: 2px;
+  background: rgba(215,165,72,.1); color: var(--amber);
+}
+.note-card .del {
+  margin-left: auto; color: var(--text-3); font-size: .7rem; opacity: 0;
+  transition: opacity .12s var(--ease);
+}
+.note-card:hover .del { opacity: 1; }
+.note-card .del:hover { color: var(--rubric); }
+
+/* --- empty states --------------------------------------------------------- */
+
+.empty {
+  padding: 1.6rem 1.1rem;
+  font-size: .82rem; line-height: 1.6; color: var(--text-3);
+}
+.empty strong { display: block; color: var(--text-2); font-weight: 500; margin-bottom: .3rem; }
+
+/* --- responsive ----------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .shell { grid-template-columns: var(--rail) minmax(0,1fr) minmax(0,1fr); }
+  .notes-pane { grid-column: 2 / -1; border-left: none; border-top: 1px solid var(--rule); }
+}
+
+@media (max-width: 820px) {
+  .shell { grid-template-columns: 1fr; height: auto; }
+  .pane { overflow-y: visible; border-left: none; border-top: 1px solid var(--rule-soft); }
+  .rail { border-top: none; }
+  .notes-pane { grid-column: auto; }
+  body { height: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  .ribbon { transition: none; }
+}
+
+/* ==========================================================================
+   v0.2 — commentary, coverage, search
+   ========================================================================== */
+
+.workspace { display: contents; }
+.three-pane { display: contents; }
+.three-pane[hidden] { display: none; }
+
+.wide { grid-column: 2 / -1; }
+.wide[hidden] { display: none; }
+
+/* --- mode navigation ------------------------------------------------------ */
+
+.mode-nav {
+  display: flex; flex-wrap: wrap; gap: .2rem;
+  padding: .75rem .8rem; border-bottom: 1px solid var(--rule-soft);
+}
+.mode-nav button {
+  padding: .3rem .55rem; border-radius: 3px;
+  font-size: .74rem; color: var(--text-3);
+  border: 1px solid transparent;
+  transition: color .12s var(--ease), background .12s var(--ease);
+}
+.mode-nav button:hover { color: var(--text-2); background: var(--ink-800); }
+.mode-nav button[aria-current="true"] {
+  color: var(--verdigris); background: rgba(116,179,165,.08);
+  border-color: var(--verdigris-dim);
+}
+
+.rail-stat {
+  margin: 1.1rem 1.1rem 0; padding-top: .8rem;
+  border-top: 1px solid var(--rule-soft);
+  font-family: var(--code); font-size: .62rem; line-height: 1.7;
+  color: var(--text-3);
+}
+.rail-stat b { color: var(--verdigris); font-weight: 500; }
+
+.compose-hint {
+  margin-top: .5rem; font-size: .68rem; line-height: 1.5; color: var(--text-3);
+}
+.compose-hint.revising { color: var(--amber); }
+
+/* --- commentary ----------------------------------------------------------- */
+
+.commentary { max-width: 46rem; padding: 0 0 6rem; }
+
+.comm-book {
+  position: sticky; top: 2.6rem; z-index: 3;
+  display: flex; align-items: baseline; gap: .7rem;
+  padding: 1.4rem 1.6rem .6rem;
+  background: var(--ink-900);
+  border-bottom: 1px solid var(--rule);
+}
+.comm-book h2 {
+  margin: 0; font-family: var(--scripture); font-size: 1.5rem; font-weight: 500;
+}
+.comm-book .btn { margin-left: auto; }
+
+.comm-entry {
+  display: grid; grid-template-columns: 4.4rem 1fr;
+  gap: 0 1.1rem; padding: 1.3rem 1.6rem;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.comm-ref {
+  font-family: var(--code); font-size: .66rem; letter-spacing: .04em;
+  color: var(--amber); padding-top: .3rem;
+}
+.comm-ref button { color: inherit; text-align: left; }
+.comm-ref button:hover { color: var(--verdigris); }
+
+.comm-scripture {
+  font-family: var(--scripture); font-size: .98rem; line-height: 1.6;
+  color: var(--text-2);
+  padding-left: .8rem; border-left: 2px solid var(--rule);
+  margin-bottom: .85rem;
+}
+.comm-heading {
+  margin: 0 0 .35rem; font-family: var(--scripture);
+  font-size: 1.12rem; font-weight: 500; color: var(--text);
+}
+.comm-body {
+  font-family: var(--scripture); font-size: 1rem; line-height: 1.72;
+  color: var(--text); white-space: pre-wrap;
+}
+
+.comm-gap {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: .6rem;
+  padding: .45rem 0 0;
+  font-family: var(--code); font-size: .6rem; color: var(--text-3);
+}
+.comm-gap::before, .comm-gap::after {
+  content: ''; flex: 1; height: 1px; background: var(--rule-soft);
+}
+
+/* --- coverage ------------------------------------------------------------- */
+
+.coverage { padding: 1.2rem 1.6rem 5rem; }
+
+.cov-book { margin-bottom: 2rem; }
+.cov-book h2 {
+  margin: 0 0 .2rem; font-family: var(--scripture);
+  font-size: 1.3rem; font-weight: 500;
+}
+.cov-summary {
+  font-family: var(--code); font-size: .64rem; color: var(--text-3);
+  margin-bottom: .9rem;
+}
+.cov-summary b { color: var(--verdigris); font-weight: 500; }
+
+.cov-chapter { display: flex; align-items: center; gap: .6rem; margin-bottom: .3rem; }
+.cov-chapter .ch {
+  font-family: var(--code); font-size: .6rem; color: var(--text-3);
+  width: 2rem; text-align: right; flex: none;
+}
+.cov-cells { display: flex; flex-wrap: wrap; gap: 2px; }
+.cov-cell {
+  width: 11px; height: 11px; border-radius: 1px;
+  background: var(--ink-700); border: none; padding: 0;
+  transition: transform .1s var(--ease), background .12s var(--ease);
+}
+.cov-cell:hover { transform: scale(1.35); }
+.cov-cell.done { background: var(--amber); }
+.cov-cell.absent { background: transparent; border: 1px solid var(--rule-soft); }
+
+.cov-legend {
+  display: flex; gap: 1rem; align-items: center;
+  margin-bottom: 1.4rem; font-size: .68rem; color: var(--text-3);
+}
+.cov-legend span { display: flex; align-items: center; gap: .35rem; }
+.cov-legend i { width: 10px; height: 10px; border-radius: 1px; display: inline-block; }
+
+/* --- search --------------------------------------------------------------- */
+
+.search-wrap { padding: 1.1rem 1.6rem 5rem; max-width: 50rem; }
+
+.search-field { display: flex; gap: .5rem; margin-bottom: .5rem; }
+.search-field input {
+  flex: 1; background: var(--ink-850);
+  border: 1px solid var(--rule); border-radius: 3px;
+  color: var(--text); padding: .6rem .7rem;
+  font-family: var(--ui); font-size: .95rem;
+}
+.search-field input:focus { border-color: var(--verdigris-dim); outline: none; }
+
+.search-scopes { display: flex; gap: .3rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+
+.res-group { margin-bottom: 1.9rem; }
+.res-group > h3 { margin: 0 0 .6rem; }
+
+.res {
+  display: grid; grid-template-columns: 5rem 1fr;
+  gap: 0 1rem; padding: .55rem 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.res .r-ref {
+  font-family: var(--code); font-size: .63rem; color: var(--text-3); padding-top: .15rem;
+}
+.res .r-ref button { color: var(--verdigris-dim); }
+.res .r-ref button:hover { color: var(--verdigris); }
+.res .r-text {
+  font-family: var(--scripture); font-size: .95rem; line-height: 1.6; color: var(--text-2);
+}
+.res mark { background: rgba(215,165,72,.22); color: var(--text); border-radius: 2px; }
+
+/* the gap finder — occurrences split by whether you've written on them */
+.gapfinder {
+  padding: .9rem 1rem; margin-bottom: 1.4rem;
+  background: var(--ink-850); border-left: 2px solid var(--verdigris);
+  border-radius: 0 3px 3px 0;
+}
+.gapfinder .headline {
+  font-family: var(--scripture); font-size: 1.05rem; margin-bottom: .55rem;
+}
+.gapfinder .headline .lemma { color: var(--verdigris); font-size: 1.2rem; }
+.gapfinder .split { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+.gapfinder .col { min-width: 9rem; }
+.gapfinder .col > .label { display: block; margin-bottom: .4rem; }
+.gapfinder .col.todo > .label { color: var(--rubric); }
+.occ-row {
+  display: flex; align-items: baseline; gap: .45rem; padding: .16rem 0;
+  font-family: var(--code); font-size: .66rem;
+}
+.occ-row button { color: var(--text-2); }
+.occ-row button:hover { color: var(--verdigris); }
+.occ-row .form { font-family: var(--scripture); font-size: .9rem; color: var(--text-3); }
+
+@media (max-width: 820px) {
+  .wide { grid-column: auto; }
+  .comm-entry, .res { grid-template-columns: 1fr; gap: .4rem; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="pane rail">
+    <div class="brand">
+      <h1>Scripture<br>Workbench</h1>
+      <div class="sub">seed corpus &middot; v0.2 &middot; standalone</div>
+    </div>
+
+    <nav class="mode-nav" id="mode-nav">
+      <button data-mode="read" aria-current="true">Read</button>
+      <button data-mode="commentary">Commentary</button>
+      <button data-mode="coverage">Coverage</button>
+      <button data-mode="search">Search</button>
+    </nav>
+
+    <div class="rail-section" id="rail-passages">
+      <span class="label">passages</span>
+      <ul class="passage-list" id="passage-list"></ul>
+    </div>
+
+    <div class="rail-section">
+      <span class="label">tags</span>
+      <div class="tag-cloud" id="tag-cloud"></div>
+    </div>
+
+    <div class="rail-stat" id="rail-stat"></div>
+    <div class="rail-note" id="store-warning" hidden></div>
+  </aside>
+
+  <div class="workspace" id="workspace">
+
+    <div class="three-pane" id="three-pane">
+
+      <main class="pane text-pane">
+        <div class="pane-head">
+          <span class="label" id="text-head">text</span>
+          <span class="count" id="text-count"></span>
+        </div>
+        <div class="version-bar" id="version-bar"></div>
+        <div id="text-body"></div>
+      </main>
+
+      <section class="pane expo-pane">
+        <div class="pane-head"><span class="label">exposition</span></div>
+        <div id="expo-body"></div>
+      </section>
+
+      <section class="pane notes-pane">
+        <div class="pane-head">
+          <span class="label">comment</span>
+          <span class="count" id="notes-count">0</span>
+        </div>
+
+        <div class="compose">
+          <div class="compose-target" id="compose-target"></div>
+          <input id="note-title" type="text" placeholder="Heading (optional)" autocomplete="off">
+          <textarea id="note-body" placeholder="Comment on this verse&hellip;"></textarea>
+          <input id="note-tags" type="text" placeholder="Tags, comma separated" autocomplete="off">
+          <div class="compose-row">
+            <button class="btn" id="note-save">Save comment</button>
+            <button class="btn ghost" id="note-clear">Clear</button>
+            <button class="btn ghost" id="note-essay" title="Write a standalone piece linked to this passage">Essay&hellip;</button>
+          </div>
+          <div class="compose-hint" id="compose-hint"></div>
+        </div>
+
+        <div id="notes-body"></div>
+      </section>
+
+    </div>
+
+    <section class="pane wide" id="wide-view" hidden>
+      <div class="pane-head">
+        <span class="label" id="wide-head"></span>
+        <span class="count" id="wide-count"></span>
+      </div>
+      <div id="wide-body"></div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ===== js/seed.js ===== */
+/**
+ * Development seed corpus.
+ *
+ * Two passages, fully tokenized, in exactly the shape build_corpus.py emits.
+ * This exists so the whole app can be built and iterated on before the real
+ * corpus (a few hundred MB) is ready. Nothing downstream knows the difference.
+ *
+ * Tokens use a compact encoding to keep this file readable:
+ *   "surface|strongs|morph|gloss"  joined by  " ~ "
+ * Real corpus rows carry the same five fields plus edition markers.
+ */
+
+// ---------------------------------------------------------------------------
+// Books present in the seed
+// ---------------------------------------------------------------------------
+
+const BOOKS = [
+  { book_id: 43, osis: 'John', name: 'John',   abbrev: 'Jn',  testament: 'NT', chapters: 21 },
+  { book_id: 45, osis: 'Rom',  name: 'Romans', abbrev: 'Rom', testament: 'NT', chapters: 16 }
+];
+
+const TRANSLATIONS = [
+  { id: 'KJV',   name: 'King James Version',    lang: 'eng', year: 1611, license: 'PD',
+    attribution: 'Public domain.', is_local: 1 },
+  { id: 'WEB',   name: 'World English Bible',   lang: 'eng', year: 2006, license: 'PD',
+    attribution: 'Public domain.', is_local: 1 },
+  { id: 'THGNT', name: 'Greek New Testament',   lang: 'grc', year: 2017, license: 'CC BY 4.0',
+    attribution: 'Tyndale House Cambridge / STEPBible, CC BY 4.0.', is_local: 1 },
+  { id: 'ESV',   name: 'English Standard Version', lang: 'eng', year: 2001, license: 'Licensed',
+    attribution: 'ESV® Bible, copyright © 2001 by Crossway. Used by permission.', is_local: 0 },
+  { id: 'NKJV',  name: 'New King James Version', lang: 'eng', year: 1982, license: 'Licensed',
+    attribution: 'New King James Version®. Copyright © 1982 by Thomas Nelson.', is_local: 0 }
+];
+
+// ---------------------------------------------------------------------------
+// Verse text
+// ---------------------------------------------------------------------------
+
+const VERSES = {
+  KJV: {
+    43001001: 'In the beginning was the Word, and the Word was with God, and the Word was God.',
+    43001002: 'The same was in the beginning with God.',
+    43001003: 'All things were made by him; and without him was not any thing made that was made.',
+    43001004: 'In him was life; and the life was the light of men.',
+    43001005: 'And the light shineth in darkness; and the darkness comprehended it not.',
+    45003021: 'But now the righteousness of God without the law is manifested, being witnessed by the law and the prophets;',
+    45003022: 'Even the righteousness of God which is by faith of Jesus Christ unto all and upon all them that believe: for there is no difference:',
+    45003023: 'For all have sinned, and come short of the glory of God;',
+    45003024: 'Being justified freely by his grace through the redemption that is in Christ Jesus:',
+    45003025: 'Whom God hath set forth to be a propitiation through faith in his blood, to declare his righteousness for the remission of sins that are past, through the forbearance of God;',
+    45003026: 'To declare, I say, at this time his righteousness: that he might be just, and the justifier of him which believeth in Jesus.'
+  },
+  WEB: {
+    43001001: 'In the beginning was the Word, and the Word was with God, and the Word was God.',
+    43001002: 'The same was in the beginning with God.',
+    43001003: 'All things were made through him. Without him, nothing was made that has been made.',
+    43001004: 'In him was life, and the life was the light of men.',
+    43001005: 'The light shines in the darkness, and the darkness hasn\u2019t overcome it.',
+    45003021: 'But now apart from the law, a righteousness of God has been revealed, being testified by the law and the prophets;',
+    45003022: 'even the righteousness of God through faith in Jesus Christ to all and on all those who believe. For there is no distinction,',
+    45003023: 'for all have sinned, and fall short of the glory of God;',
+    45003024: 'being justified freely by his grace through the redemption that is in Christ Jesus;',
+    45003025: 'whom God sent to be an atoning sacrifice, through faith in his blood, for a demonstration of his righteousness through the passing over of prior sins, in God\u2019s forbearance;',
+    45003026: 'to demonstrate his righteousness at this present time; that he might himself be just, and the justifier of him who has faith in Jesus.'
+  },
+  THGNT: {
+    43001001: '\u1F18\u03BD \u1F00\u03C1\u03C7\u1FC7 \u1F26\u03BD \u1F41 \u03BB\u03CC\u03B3\u03BF\u03C2, \u03BA\u03B1\u1F76 \u1F41 \u03BB\u03CC\u03B3\u03BF\u03C2 \u1F26\u03BD \u03C0\u03C1\u1F78\u03C2 \u03C4\u1F78\u03BD \u03B8\u03B5\u03CC\u03BD, \u03BA\u03B1\u1F76 \u03B8\u03B5\u1F78\u03C2 \u1F26\u03BD \u1F41 \u03BB\u03CC\u03B3\u03BF\u03C2.',
+    43001002: '\u03BF\u1F57\u03C4\u03BF\u03C2 \u1F26\u03BD \u1F10\u03BD \u1F00\u03C1\u03C7\u1FC7 \u03C0\u03C1\u1F78\u03C2 \u03C4\u1F78\u03BD \u03B8\u03B5\u03CC\u03BD.',
+    43001003: '\u03C0\u03AC\u03BD\u03C4\u03B1 \u03B4\u03B9\u2019 \u03B1\u1F50\u03C4\u03BF\u1FE6 \u1F10\u03B3\u03AD\u03BD\u03B5\u03C4\u03BF, \u03BA\u03B1\u1F76 \u03C7\u03C9\u03C1\u1F76\u03C2 \u03B1\u1F50\u03C4\u03BF\u1FE6 \u1F10\u03B3\u03AD\u03BD\u03B5\u03C4\u03BF \u03BF\u1F50\u03B4\u1F72 \u1F15\u03BD \u1F43 \u03B3\u03AD\u03B3\u03BF\u03BD\u03B5\u03BD.',
+    43001004: '\u1F10\u03BD \u03B1\u1F50\u03C4\u1FF7 \u03B6\u03C9\u1F74 \u1F26\u03BD, \u03BA\u03B1\u1F76 \u1F21 \u03B6\u03C9\u1F74 \u1F26\u03BD \u03C4\u1F78 \u03C6\u1FF6\u03C2 \u03C4\u1FF6\u03BD \u1F00\u03BD\u03B8\u03C1\u03CE\u03C0\u03C9\u03BD\u00B7',
+    43001005: '\u03BA\u03B1\u1F76 \u03C4\u1F78 \u03C6\u1FF6\u03C2 \u1F10\u03BD \u03C4\u1FC7 \u03C3\u03BA\u03BF\u03C4\u03AF\u1FB3 \u03C6\u03B1\u03AF\u03BD\u03B5\u03B9, \u03BA\u03B1\u1F76 \u1F21 \u03C3\u03BA\u03BF\u03C4\u03AF\u03B1 \u03B1\u1F50\u03C4\u1F78 \u03BF\u1F50 \u03BA\u03B1\u03C4\u03AD\u03BB\u03B1\u03B2\u03B5\u03BD.',
+    45003021: '\u039D\u03C5\u03BD\u1F76 \u03B4\u1F72 \u03C7\u03C9\u03C1\u1F76\u03C2 \u03BD\u03CC\u03BC\u03BF\u03C5 \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7 \u03B8\u03B5\u03BF\u1FE6 \u03C0\u03B5\u03C6\u03B1\u03BD\u03AD\u03C1\u03C9\u03C4\u03B1\u03B9, \u03BC\u03B1\u03C1\u03C4\u03C5\u03C1\u03BF\u03C5\u03BC\u03AD\u03BD\u03B7 \u1F51\u03C0\u1F78 \u03C4\u03BF\u1FE6 \u03BD\u03CC\u03BC\u03BF\u03C5 \u03BA\u03B1\u1F76 \u03C4\u1FF6\u03BD \u03C0\u03C1\u03BF\u03C6\u03B7\u03C4\u1FF6\u03BD,',
+    45003022: '\u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7 \u03B4\u1F72 \u03B8\u03B5\u03BF\u1FE6 \u03B4\u03B9\u1F70 \u03C0\u03AF\u03C3\u03C4\u03B5\u03C9\u03C2 \u1F38\u03B7\u03C3\u03BF\u1FE6 \u03A7\u03C1\u03B9\u03C3\u03C4\u03BF\u1FE6, \u03B5\u1F30\u03C2 \u03C0\u03AC\u03BD\u03C4\u03B1\u03C2 \u03C4\u03BF\u1F7A\u03C2 \u03C0\u03B9\u03C3\u03C4\u03B5\u03CD\u03BF\u03BD\u03C4\u03B1\u03C2\u00B7 \u03BF\u1F50 \u03B3\u03AC\u03C1 \u1F10\u03C3\u03C4\u03B9\u03BD \u03B4\u03B9\u03B1\u03C3\u03C4\u03BF\u03BB\u03AE\u00B7',
+    45003023: '\u03C0\u03AC\u03BD\u03C4\u03B5\u03C2 \u03B3\u1F70\u03C1 \u1F25\u03BC\u03B1\u03C1\u03C4\u03BF\u03BD \u03BA\u03B1\u1F76 \u1F51\u03C3\u03C4\u03B5\u03C1\u03BF\u1FE6\u03BD\u03C4\u03B1\u03B9 \u03C4\u1FC6\u03C2 \u03B4\u03CC\u03BE\u03B7\u03C2 \u03C4\u03BF\u1FE6 \u03B8\u03B5\u03BF\u1FE6,',
+    45003024: '\u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03CD\u03BC\u03B5\u03BD\u03BF\u03B9 \u03B4\u03C9\u03C1\u03B5\u1F70\u03BD \u03C4\u1FC7 \u03B1\u1F50\u03C4\u03BF\u1FE6 \u03C7\u03AC\u03C1\u03B9\u03C4\u03B9 \u03B4\u03B9\u1F70 \u03C4\u1FC6\u03C2 \u1F00\u03C0\u03BF\u03BB\u03C5\u03C4\u03C1\u03CE\u03C3\u03B5\u03C9\u03C2 \u03C4\u1FC6\u03C2 \u1F10\u03BD \u03A7\u03C1\u03B9\u03C3\u03C4\u1FF7 \u1F38\u03B7\u03C3\u03BF\u1FE6\u00B7',
+    45003025: '\u1F43\u03BD \u03C0\u03C1\u03BF\u03AD\u03B8\u03B5\u03C4\u03BF \u1F41 \u03B8\u03B5\u1F78\u03C2 \u1F31\u03BB\u03B1\u03C3\u03C4\u03AE\u03C1\u03B9\u03BF\u03BD \u03B4\u03B9\u1F70 \u03C0\u03AF\u03C3\u03C4\u03B5\u03C9\u03C2 \u1F10\u03BD \u03C4\u1FF7 \u03B1\u1F50\u03C4\u03BF\u1FE6 \u03B1\u1F35\u03BC\u03B1\u03C4\u03B9, \u03B5\u1F30\u03C2 \u1F14\u03BD\u03B4\u03B5\u03B9\u03BE\u03B9\u03BD \u03C4\u1FC6\u03C2 \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7\u03C2 \u03B1\u1F50\u03C4\u03BF\u1FE6 \u03B4\u03B9\u1F70 \u03C4\u1F74\u03BD \u03C0\u03AC\u03C1\u03B5\u03C3\u03B9\u03BD \u03C4\u1FF6\u03BD \u03C0\u03C1\u03BF\u03B3\u03B5\u03B3\u03BF\u03BD\u03CC\u03C4\u03C9\u03BD \u1F01\u03BC\u03B1\u03C1\u03C4\u03B7\u03BC\u03AC\u03C4\u03C9\u03BD',
+    45003026: '\u1F10\u03BD \u03C4\u1FC7 \u1F00\u03BD\u03BF\u03C7\u1FC7 \u03C4\u03BF\u1FE6 \u03B8\u03B5\u03BF\u1FE6, \u03C0\u03C1\u1F78\u03C2 \u03C4\u1F74\u03BD \u1F14\u03BD\u03B4\u03B5\u03B9\u03BE\u03B9\u03BD \u03C4\u1FC6\u03C2 \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7\u03C2 \u03B1\u1F50\u03C4\u03BF\u1FE6 \u1F10\u03BD \u03C4\u1FF7 \u03BD\u1FE6\u03BD \u03BA\u03B1\u03B9\u03C1\u1FF7, \u03B5\u1F30\u03C2 \u03C4\u1F78 \u03B5\u1F36\u03BD\u03B1\u03B9 \u03B1\u1F50\u03C4\u1F78\u03BD \u03B4\u03AF\u03BA\u03B1\u03B9\u03BF\u03BD \u03BA\u03B1\u1F76 \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u1FE6\u03BD\u03C4\u03B1 \u03C4\u1F78\u03BD \u1F10\u03BA \u03C0\u03AF\u03C3\u03C4\u03B5\u03C9\u03C2 \u1F38\u03B7\u03C3\u03BF\u1FE6.'
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Tokens — "surface|strongs|morph|gloss" joined by " ~ "
+// ---------------------------------------------------------------------------
+
+const TOKEN_SRC = {
+  43001001: '\u1F18\u03BD|G1722|PREP|in ~ \u1F00\u03C1\u03C7\u1FC7|G0746|N-DSF|beginning ~ \u1F26\u03BD|G1510|V-IAI-3S|was ~ \u1F41|G3588|T-NSM|the ~ \u03BB\u03CC\u03B3\u03BF\u03C2|G3056|N-NSM|Word ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u1F41|G3588|T-NSM|the ~ \u03BB\u03CC\u03B3\u03BF\u03C2|G3056|N-NSM|Word ~ \u1F26\u03BD|G1510|V-IAI-3S|was ~ \u03C0\u03C1\u1F78\u03C2|G4314|PREP|with ~ \u03C4\u1F78\u03BD|G3588|T-ASM|the ~ \u03B8\u03B5\u03CC\u03BD|G2316|N-ASM|God ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u03B8\u03B5\u1F78\u03C2|G2316|N-NSM|God ~ \u1F26\u03BD|G1510|V-IAI-3S|was ~ \u1F41|G3588|T-NSM|the ~ \u03BB\u03CC\u03B3\u03BF\u03C2|G3056|N-NSM|Word',
+  43001002: '\u03BF\u1F57\u03C4\u03BF\u03C2|G3778|D-NSM|this one ~ \u1F26\u03BD|G1510|V-IAI-3S|was ~ \u1F10\u03BD|G1722|PREP|in ~ \u1F00\u03C1\u03C7\u1FC7|G0746|N-DSF|beginning ~ \u03C0\u03C1\u1F78\u03C2|G4314|PREP|with ~ \u03C4\u1F78\u03BD|G3588|T-ASM|the ~ \u03B8\u03B5\u03CC\u03BD|G2316|N-ASM|God',
+  43001003: '\u03C0\u03AC\u03BD\u03C4\u03B1|G3956|A-NPN|all things ~ \u03B4\u03B9\u2019|G1223|PREP|through ~ \u03B1\u1F50\u03C4\u03BF\u1FE6|G0846|P-GSM|him ~ \u1F10\u03B3\u03AD\u03BD\u03B5\u03C4\u03BF|G1096|V-2ADI-3S|came to be ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u03C7\u03C9\u03C1\u1F76\u03C2|G5565|PREP|apart from ~ \u03B1\u1F50\u03C4\u03BF\u1FE6|G0846|P-GSM|him ~ \u1F10\u03B3\u03AD\u03BD\u03B5\u03C4\u03BF|G1096|V-2ADI-3S|came to be ~ \u03BF\u1F50\u03B4\u1F72|G3761|CONJ-N|not even ~ \u1F15\u03BD|G1520|A-NSN|one ~ \u1F43|G3739|R-NSN|which ~ \u03B3\u03AD\u03B3\u03BF\u03BD\u03B5\u03BD|G1096|V-2RAI-3S|has come to be',
+  43001004: '\u1F10\u03BD|G1722|PREP|in ~ \u03B1\u1F50\u03C4\u1FF7|G0846|P-DSM|him ~ \u03B6\u03C9\u1F74|G2222|N-NSF|life ~ \u1F26\u03BD|G1510|V-IAI-3S|was ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u1F21|G3588|T-NSF|the ~ \u03B6\u03C9\u1F74|G2222|N-NSF|life ~ \u1F26\u03BD|G1510|V-IAI-3S|was ~ \u03C4\u1F78|G3588|T-NSN|the ~ \u03C6\u1FF6\u03C2|G5457|N-NSN|light ~ \u03C4\u1FF6\u03BD|G3588|T-GPM|of the ~ \u1F00\u03BD\u03B8\u03C1\u03CE\u03C0\u03C9\u03BD|G0444|N-GPM|men',
+  43001005: '\u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u03C4\u1F78|G3588|T-NSN|the ~ \u03C6\u1FF6\u03C2|G5457|N-NSN|light ~ \u1F10\u03BD|G1722|PREP|in ~ \u03C4\u1FC7|G3588|T-DSF|the ~ \u03C3\u03BA\u03BF\u03C4\u03AF\u1FB3|G4653|N-DSF|darkness ~ \u03C6\u03B1\u03AF\u03BD\u03B5\u03B9|G5316|V-PAI-3S|shines ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u1F21|G3588|T-NSF|the ~ \u03C3\u03BA\u03BF\u03C4\u03AF\u03B1|G4653|N-NSF|darkness ~ \u03B1\u1F50\u03C4\u1F78|G0846|P-ASN|it ~ \u03BF\u1F50|G3756|PRT-N|not ~ \u03BA\u03B1\u03C4\u03AD\u03BB\u03B1\u03B2\u03B5\u03BD|G2638|V-2AAI-3S|overcame / grasped',
+  45003021: '\u039D\u03C5\u03BD\u1F76|G3570|ADV|now ~ \u03B4\u1F72|G1161|CONJ|but ~ \u03C7\u03C9\u03C1\u1F76\u03C2|G5565|PREP|apart from ~ \u03BD\u03CC\u03BC\u03BF\u03C5|G3551|N-GSM|law ~ \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7|G1343|N-NSF|righteousness ~ \u03B8\u03B5\u03BF\u1FE6|G2316|N-GSM|of God ~ \u03C0\u03B5\u03C6\u03B1\u03BD\u03AD\u03C1\u03C9\u03C4\u03B1\u03B9|G5319|V-RPI-3S|has been manifested ~ \u03BC\u03B1\u03C1\u03C4\u03C5\u03C1\u03BF\u03C5\u03BC\u03AD\u03BD\u03B7|G3140|V-PPP-NSF|being witnessed to ~ \u1F51\u03C0\u1F78|G5259|PREP|by ~ \u03C4\u03BF\u1FE6|G3588|T-GSM|the ~ \u03BD\u03CC\u03BC\u03BF\u03C5|G3551|N-GSM|law ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u03C4\u1FF6\u03BD|G3588|T-GPM|the ~ \u03C0\u03C1\u03BF\u03C6\u03B7\u03C4\u1FF6\u03BD|G4396|N-GPM|prophets',
+  45003022: '\u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7|G1343|N-NSF|righteousness ~ \u03B4\u1F72|G1161|CONJ|and ~ \u03B8\u03B5\u03BF\u1FE6|G2316|N-GSM|of God ~ \u03B4\u03B9\u1F70|G1223|PREP|through ~ \u03C0\u03AF\u03C3\u03C4\u03B5\u03C9\u03C2|G4102|N-GSF|faith ~ \u1F38\u03B7\u03C3\u03BF\u1FE6|G2424|N-GSM|of Jesus ~ \u03A7\u03C1\u03B9\u03C3\u03C4\u03BF\u1FE6|G5547|N-GSM|Christ ~ \u03B5\u1F30\u03C2|G1519|PREP|to ~ \u03C0\u03AC\u03BD\u03C4\u03B1\u03C2|G3956|A-APM|all ~ \u03C4\u03BF\u1F7A\u03C2|G3588|T-APM|the ones ~ \u03C0\u03B9\u03C3\u03C4\u03B5\u03CD\u03BF\u03BD\u03C4\u03B1\u03C2|G4100|V-PAP-APM|believing ~ \u03BF\u1F50|G3756|PRT-N|not ~ \u03B3\u03AC\u03C1|G1063|CONJ|for ~ \u1F10\u03C3\u03C4\u03B9\u03BD|G1510|V-PAI-3S|there is ~ \u03B4\u03B9\u03B1\u03C3\u03C4\u03BF\u03BB\u03AE|G1293|N-NSF|distinction',
+  45003023: '\u03C0\u03AC\u03BD\u03C4\u03B5\u03C2|G3956|A-NPM|all ~ \u03B3\u1F70\u03C1|G1063|CONJ|for ~ \u1F25\u03BC\u03B1\u03C1\u03C4\u03BF\u03BD|G0264|V-2AAI-3P|sinned ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u1F51\u03C3\u03C4\u03B5\u03C1\u03BF\u1FE6\u03BD\u03C4\u03B1\u03B9|G5302|V-PPI-3P|fall short ~ \u03C4\u1FC6\u03C2|G3588|T-GSF|of the ~ \u03B4\u03CC\u03BE\u03B7\u03C2|G1391|N-GSF|glory ~ \u03C4\u03BF\u1FE6|G3588|T-GSM|of the ~ \u03B8\u03B5\u03BF\u1FE6|G2316|N-GSM|God',
+  45003024: '\u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03CD\u03BC\u03B5\u03BD\u03BF\u03B9|G1344|V-PPP-NPM|being justified ~ \u03B4\u03C9\u03C1\u03B5\u1F70\u03BD|G1432|ADV|freely / as a gift ~ \u03C4\u1FC7|G3588|T-DSF|by the ~ \u03B1\u1F50\u03C4\u03BF\u1FE6|G0846|P-GSM|his ~ \u03C7\u03AC\u03C1\u03B9\u03C4\u03B9|G5485|N-DSF|grace ~ \u03B4\u03B9\u1F70|G1223|PREP|through ~ \u03C4\u1FC6\u03C2|G3588|T-GSF|the ~ \u1F00\u03C0\u03BF\u03BB\u03C5\u03C4\u03C1\u03CE\u03C3\u03B5\u03C9\u03C2|G0629|N-GSF|redemption ~ \u03C4\u1FC6\u03C2|G3588|T-GSF|the one ~ \u1F10\u03BD|G1722|PREP|in ~ \u03A7\u03C1\u03B9\u03C3\u03C4\u1FF7|G5547|N-DSM|Christ ~ \u1F38\u03B7\u03C3\u03BF\u1FE6|G2424|N-DSM|Jesus',
+  45003025: '\u1F43\u03BD|G3739|R-ASM|whom ~ \u03C0\u03C1\u03BF\u03AD\u03B8\u03B5\u03C4\u03BF|G4388|V-2AMI-3S|set forth publicly ~ \u1F41|G3588|T-NSM|the ~ \u03B8\u03B5\u1F78\u03C2|G2316|N-NSM|God ~ \u1F31\u03BB\u03B1\u03C3\u03C4\u03AE\u03C1\u03B9\u03BF\u03BD|G2435|N-ASN|propitiation / mercy seat ~ \u03B4\u03B9\u1F70|G1223|PREP|through ~ \u03C0\u03AF\u03C3\u03C4\u03B5\u03C9\u03C2|G4102|N-GSF|faith ~ \u1F10\u03BD|G1722|PREP|in ~ \u03C4\u1FF7|G3588|T-DSN|the ~ \u03B1\u1F50\u03C4\u03BF\u1FE6|G0846|P-GSM|his ~ \u03B1\u1F35\u03BC\u03B1\u03C4\u03B9|G0129|N-DSN|blood ~ \u03B5\u1F30\u03C2|G1519|PREP|for ~ \u1F14\u03BD\u03B4\u03B5\u03B9\u03BE\u03B9\u03BD|G1732|N-ASF|demonstration ~ \u03C4\u1FC6\u03C2|G3588|T-GSF|of the ~ \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7\u03C2|G1343|N-GSF|righteousness ~ \u03B1\u1F50\u03C4\u03BF\u1FE6|G0846|P-GSM|his ~ \u03B4\u03B9\u1F70|G1223|PREP|because of ~ \u03C4\u1F74\u03BD|G3588|T-ASF|the ~ \u03C0\u03AC\u03C1\u03B5\u03C3\u03B9\u03BD|G3929|N-ASF|passing over ~ \u03C4\u1FF6\u03BD|G3588|T-GPN|of the ~ \u03C0\u03C1\u03BF\u03B3\u03B5\u03B3\u03BF\u03BD\u03CC\u03C4\u03C9\u03BD|G4266|V-2RAP-GPN|previously committed ~ \u1F01\u03BC\u03B1\u03C1\u03C4\u03B7\u03BC\u03AC\u03C4\u03C9\u03BD|G0265|N-GPN|sins',
+  45003026: '\u1F10\u03BD|G1722|PREP|in ~ \u03C4\u1FC7|G3588|T-DSF|the ~ \u1F00\u03BD\u03BF\u03C7\u1FC7|G0463|N-DSF|forbearance ~ \u03C4\u03BF\u1FE6|G3588|T-GSM|of the ~ \u03B8\u03B5\u03BF\u1FE6|G2316|N-GSM|God ~ \u03C0\u03C1\u1F78\u03C2|G4314|PREP|toward ~ \u03C4\u1F74\u03BD|G3588|T-ASF|the ~ \u1F14\u03BD\u03B4\u03B5\u03B9\u03BE\u03B9\u03BD|G1732|N-ASF|demonstration ~ \u03C4\u1FC6\u03C2|G3588|T-GSF|of the ~ \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7\u03C2|G1343|N-GSF|righteousness ~ \u03B1\u1F50\u03C4\u03BF\u1FE6|G0846|P-GSM|his ~ \u1F10\u03BD|G1722|PREP|at ~ \u03C4\u1FF7|G3588|T-DSM|the ~ \u03BD\u1FE6\u03BD|G3568|ADV|now ~ \u03BA\u03B1\u03B9\u03C1\u1FF7|G2540|N-DSM|time ~ \u03B5\u1F30\u03C2|G1519|PREP|for ~ \u03C4\u1F78|G3588|T-ASN|the ~ \u03B5\u1F36\u03BD\u03B1\u03B9|G1510|V-PAN|to be ~ \u03B1\u1F50\u03C4\u1F78\u03BD|G0846|P-ASM|himself ~ \u03B4\u03AF\u03BA\u03B1\u03B9\u03BF\u03BD|G1342|A-ASM|just ~ \u03BA\u03B1\u1F76|G2532|CONJ|and ~ \u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u1FE6\u03BD\u03C4\u03B1|G1344|V-PAP-ASM|justifying ~ \u03C4\u1F78\u03BD|G3588|T-ASM|the one ~ \u1F10\u03BA|G1537|PREP|out of ~ \u03C0\u03AF\u03C3\u03C4\u03B5\u03C9\u03C2|G4102|N-GSF|faith ~ \u1F38\u03B7\u03C3\u03BF\u1FE6|G2424|N-GSM|of Jesus'
+};
+
+/**
+ * Edition apparatus. Words absent here are in every edition. Words listed
+ * carry a restricted set — the rubric marker in the text pane.
+ *
+ * Romans 3:22 is the demonstration case: the Byzantine tradition and the
+ * Textus Receptus continue "and upon all" after "to all", which the critical
+ * editions do not carry. This is exactly the kind of thing the apparatus
+ * indicator exists to surface.
+ */
+const ALL_EDITIONS = ['THGNT', 'NA28', 'SBLGNT', 'TREG', 'WH', 'TR', 'BYZ'];
+
+const VARIANTS = {
+  // verse_id: { position: [editions] }
+  45003022: { 11: ['TR', 'BYZ'] },   // πιστεύοντας — TR/Byz continue "καὶ ἐπὶ πάντας" here
+  43001003: { 12: ['THGNT', 'NA28', 'SBLGNT', 'TREG', 'WH'] } // punctuation split before ὃ γέγονεν
+};
+
+// ---------------------------------------------------------------------------
+// Lexicon
+// ---------------------------------------------------------------------------
+
+const LEXICON = {
+  G0129: { lemma: '\u03B1\u1F37\u03BC\u03B1', translit: 'haima', pos: 'noun',
+    short: 'blood', full: 'Blood; by metonymy, life, and especially sacrificial death. In the epistles the phrase "his blood" almost always denotes the sacrificial death rather than the physical substance.' },
+  G0264: { lemma: '\u1F01\u03BC\u03B1\u03C1\u03C4\u03AC\u03BD\u03C9', translit: 'hamartano', pos: 'verb',
+    short: 'to sin, to miss the mark', full: 'Originally to miss a target; in the NT, to fail of the divine standard. The aorist in Romans 3:23 views the whole race\u2019s sinning as a single completed fact.' },
+  G0265: { lemma: '\u1F01\u03BC\u03AC\u03C1\u03C4\u03B7\u03BC\u03B1', translit: 'hamartema', pos: 'noun',
+    short: 'a sin, a sinful deed', full: 'The concrete act rather than the principle \u2014 distinguished from \u1F01\u03BC\u03B1\u03C1\u03C4\u03AF\u03B1, which can denote sin as a state or power.' },
+  G0463: { lemma: '\u1F00\u03BD\u03BF\u03C7\u03AE', translit: 'anoche', pos: 'noun',
+    short: 'forbearance, holding back', full: 'A holding back or suspension. Not pardon but delay of judgment \u2014 the temporary withholding that made the propitiation necessary as a vindication.' },
+  G0629: { lemma: '\u1F00\u03C0\u03BF\u03BB\u03CD\u03C4\u03C1\u03C9\u03C3\u03B9\u03C2', translit: 'apolutrosis', pos: 'noun',
+    short: 'redemption, release by ransom', full: 'Release secured by payment of a ransom (\u03BB\u03CD\u03C4\u03C1\u03BF\u03BD). The compound intensifies: a full and final buying out. Used of manumission of slaves and ransom of prisoners of war.' },
+  G0746: { lemma: '\u1F00\u03C1\u03C7\u03AE', translit: 'arche', pos: 'noun',
+    short: 'beginning, origin, rule', full: 'Beginning in time, or first cause, or position of rule. The anarthrous use in John 1:1 echoes Genesis 1:1 in the Septuagint.' },
+  G1096: { lemma: '\u03B3\u03AF\u03BD\u03BF\u03BC\u03B1\u03B9', translit: 'ginomai', pos: 'verb',
+    short: 'to become, to come into being', full: 'To come into existence \u2014 deliberately contrasted in John 1 with \u03B5\u1F30\u03BC\u03AF (to be), which is used of the Word. The Word was; everything else came to be.' },
+  G1293: { lemma: '\u03B4\u03B9\u03B1\u03C3\u03C4\u03BF\u03BB\u03AE', translit: 'diastole', pos: 'noun',
+    short: 'distinction, difference', full: 'A drawing apart, a distinction made between things. Used by Paul of the collapse of the Jew/Gentile distinction with respect to guilt.' },
+  G1342: { lemma: '\u03B4\u03AF\u03BA\u03B1\u03B9\u03BF\u03C2', translit: 'dikaios', pos: 'adjective',
+    short: 'just, righteous', full: 'Conforming to the standard. In Romans 3:26 the point is God\u2019s own conformity to his standard while acquitting the guilty \u2014 just, and the justifier.' },
+  G1343: { lemma: '\u03B4\u03B9\u03BA\u03B1\u03B9\u03BF\u03C3\u03CD\u03BD\u03B7', translit: 'dikaiosune', pos: 'noun',
+    short: 'righteousness, justice', full: 'The quality of being right, or the status of being declared right. Whether the genitive \u03B8\u03B5\u03BF\u1FE6 in Romans is possessive (God\u2019s own attribute) or a genitive of source (righteousness from God) is one of the load-bearing questions in the epistle.' },
+  G1344: { lemma: '\u03B4\u03B9\u03BA\u03B1\u03B9\u03CC\u03C9', translit: 'dikaioo', pos: 'verb',
+    short: 'to justify, to declare righteous', full: 'Forensic \u2014 to pronounce a verdict of righteous, not to make inwardly righteous. The -\u03CC\u03C9 ending on adjectival roots of this class is declarative, as in \u1F00\u03BE\u03B9\u03CC\u03C9, to deem worthy.' },
+  G1391: { lemma: '\u03B4\u03CC\u03BE\u03B1', translit: 'doxa', pos: 'noun',
+    short: 'glory, honour, splendour', full: 'In the Septuagint it renders \u05DB\u05B8\u05BC\u05D1\u05D5\u05B9\u05D3, the manifest weight or presence of God. "Fall short of the glory of God" trades on that: the standard is the divine presence itself.' },
+  G1432: { lemma: '\u03B4\u03C9\u03C1\u03B5\u03AC\u03BD', translit: 'dorean', pos: 'adverb',
+    short: 'freely, as a gift, without cause', full: 'Accusative of \u03B4\u03C9\u03C1\u03B5\u03AC used adverbially: gratis. The same word renders "without a cause" in John 15:25 \u2014 given without anything in the recipient to occasion it.' },
+  G1510: { lemma: '\u03B5\u1F30\u03BC\u03AF', translit: 'eimi', pos: 'verb',
+    short: 'to be, to exist', full: 'Existence as such. The imperfect \u1F26\u03BD in John 1:1 denotes continuous existence with no implied beginning \u2014 the deliberate contrast with \u1F10\u03B3\u03AD\u03BD\u03B5\u03C4\u03BF in verse 3.' },
+  G1732: { lemma: '\u1F14\u03BD\u03B4\u03B5\u03B9\u03BE\u03B9\u03C2', translit: 'endeixis', pos: 'noun',
+    short: 'demonstration, proof, showing forth', full: 'A pointing out, in the sense of evidentiary display \u2014 legal proof rather than mere illustration. The cross as exhibit.' },
+  G2222: { lemma: '\u03B6\u03C9\u03AE', translit: 'zoe', pos: 'noun',
+    short: 'life', full: 'Life as principle and vitality, as distinguished from \u03B2\u03AF\u03BF\u03C2, the course or means of living.' },
+  G2316: { lemma: '\u03B8\u03B5\u03CC\u03C2', translit: 'theos', pos: 'noun',
+    short: 'God, a god', full: 'The absence of the article on \u03B8\u03B5\u03CC\u03C2 in the third clause of John 1:1, with \u03BB\u03CC\u03B3\u03BF\u03C2 articular, marks \u03B8\u03B5\u03CC\u03C2 as predicate and is generally taken as qualitative rather than indefinite.' },
+  G2424: { lemma: '\u1F38\u03B7\u03C3\u03BF\u1FE6\u03C2', translit: 'Iesous', pos: 'proper noun',
+    short: 'Jesus', full: 'Greek form of \u05D9\u05B5\u05E9\u05C1\u05D5\u05BC\u05E2\u05B7, Yeshua.' },
+  G2435: { lemma: '\u1F31\u03BB\u03B1\u03C3\u03C4\u03AE\u03C1\u03B9\u03BF\u03BD', translit: 'hilasterion', pos: 'noun',
+    short: 'propitiation; mercy seat', full: 'In the Septuagint this is the standard rendering of \u05DB\u05B7\u05BC\u05E4\u05BC\u05B9\u05E8\u05B6\u05EA, the cover of the ark where blood was sprinkled on the Day of Atonement. Whether Paul intends the furniture (mercy seat) or the act (propitiatory sacrifice) is contested and materially changes the sentence. Occurs only here and Hebrews 9:5.' },
+  G2532: { lemma: '\u03BA\u03B1\u03AF', translit: 'kai', pos: 'conjunction', short: 'and, also, even', full: 'Coordinating conjunction; frequently ascensive ("even") or epexegetical.' },
+  G2540: { lemma: '\u03BA\u03B1\u03B9\u03C1\u03CC\u03C2', translit: 'kairos', pos: 'noun',
+    short: 'appointed time, season', full: 'A juncture or opportune moment, as distinct from \u03C7\u03C1\u03CC\u03BD\u03BF\u03C2, duration. "The now time" contrasts with the period of forbearance just named.' },
+  G2638: { lemma: '\u03BA\u03B1\u03C4\u03B1\u03BB\u03B1\u03BC\u03B2\u03AC\u03BD\u03C9', translit: 'katalambano', pos: 'verb',
+    short: 'to seize, overtake, grasp', full: 'To lay hold of \u2014 either hostilely (overpower) or intellectually (comprehend). John 1:5 is deliberately ambiguous between the two and translations split on it.' },
+  G3056: { lemma: '\u03BB\u03CC\u03B3\u03BF\u03C2', translit: 'logos', pos: 'noun',
+    short: 'word, reason, account', full: 'Spoken word, discourse, or the rational principle. Draws on both the Hebrew \u05D3\u05B8\u05BC\u05D1\u05B8\u05E8 of creation and utterance, and Hellenistic usage for the ordering principle of the cosmos.' },
+  G3140: { lemma: '\u03BC\u03B1\u03C1\u03C4\u03C5\u03C1\u03AD\u03C9', translit: 'martureo', pos: 'verb',
+    short: 'to bear witness, testify', full: 'To give evidence. The present passive participle in Romans 3:21 keeps the law and prophets continuously testifying to a righteousness they do not themselves supply.' },
+  G3551: { lemma: '\u03BD\u03CC\u03BC\u03BF\u03C2', translit: 'nomos', pos: 'noun',
+    short: 'law', full: 'Law generally, the Mosaic law particularly, or the Pentateuch as a division of scripture. Romans 3:21 uses it in two senses in one verse \u2014 apart from law, witnessed by the law.' },
+  G3570: { lemma: '\u03BD\u03C5\u03BD\u03AF', translit: 'nuni', pos: 'adverb',
+    short: 'now, at this present moment', full: 'Emphatic form of \u03BD\u1FE6\u03BD. Here logical as well as temporal \u2014 marking the turn from indictment to remedy.' },
+  G3929: { lemma: '\u03C0\u03AC\u03C1\u03B5\u03C3\u03B9\u03C2', translit: 'paresis', pos: 'noun',
+    short: 'passing over, letting go unpunished', full: 'A dismissal or overlooking. Distinguished by many commentators from \u1F04\u03C6\u03B5\u03C3\u03B9\u03C2, remission \u2014 a passing by rather than a cancelling. Occurs only here in the NT, which makes the distinction hard to press from usage alone.' },
+  G4100: { lemma: '\u03C0\u03B9\u03C3\u03C4\u03B5\u03CD\u03C9', translit: 'pisteuo', pos: 'verb',
+    short: 'to believe, to trust', full: 'To place confidence in. The present participle denotes continuing trust rather than a completed act.' },
+  G4102: { lemma: '\u03C0\u03AF\u03C3\u03C4\u03B9\u03C2', translit: 'pistis', pos: 'noun',
+    short: 'faith, faithfulness, trust', full: 'Trust, or the faithfulness that warrants trust. Whether \u03C0\u03AF\u03C3\u03C4\u03B5\u03C9\u03C2 \u1F38\u03B7\u03C3\u03BF\u1FE6 \u03A7\u03C1\u03B9\u03C3\u03C4\u03BF\u1FE6 is objective ("faith in Christ") or subjective ("the faithfulness of Christ") is a live and consequential debate.' },
+  G4266: { lemma: '\u03C0\u03C1\u03BF\u03B3\u03AF\u03BD\u03BF\u03BC\u03B1\u03B9', translit: 'proginomai', pos: 'verb',
+    short: 'to happen before', full: 'To occur previously. Perfect participle: sins committed before, whose effects stand.' },
+  G4388: { lemma: '\u03C0\u03C1\u03BF\u03C4\u03AF\u03B8\u03B7\u03BC\u03B9', translit: 'protithemi', pos: 'verb',
+    short: 'to set forth publicly; to purpose', full: 'Either to display openly or to purpose beforehand. The middle voice permits both, and the choice affects whether the emphasis falls on eternal intention or public exhibition.' },
+  G4396: { lemma: '\u03C0\u03C1\u03BF\u03C6\u03AE\u03C4\u03B7\u03C2', translit: 'prophetes', pos: 'noun',
+    short: 'prophet', full: 'One who speaks forth on behalf of another; with the law, a standard designation for a division of the Hebrew scriptures.' },
+  G4653: { lemma: '\u03C3\u03BA\u03BF\u03C4\u03AF\u03B1', translit: 'skotia', pos: 'noun',
+    short: 'darkness', full: 'Darkness literally, and in John consistently as a moral and spiritual domain.' },
+  G5302: { lemma: '\u1F51\u03C3\u03C4\u03B5\u03C1\u03AD\u03C9', translit: 'hustereo', pos: 'verb',
+    short: 'to fall short, to lack', full: 'To come late, to be inferior, to be in want. The present tense in Romans 3:23 follows an aorist \u2014 they sinned, and they go on falling short.' },
+  G5316: { lemma: '\u03C6\u03B1\u03AF\u03BD\u03C9', translit: 'phaino', pos: 'verb',
+    short: 'to shine, to appear', full: 'To give light, or to be visible. Present tense in John 1:5: the shining is continuous.' },
+  G5319: { lemma: '\u03C6\u03B1\u03BD\u03B5\u03C1\u03CC\u03C9', translit: 'phaneroo', pos: 'verb',
+    short: 'to make manifest, reveal', full: 'To bring into the open what was there but hidden. The perfect passive holds the manifestation as an accomplished and standing state.' },
+  G5457: { lemma: '\u03C6\u1FF6\u03C2', translit: 'phos', pos: 'noun',
+    short: 'light', full: 'Light as illumination and as a sphere of moral reality.' },
+  G5485: { lemma: '\u03C7\u03AC\u03C1\u03B9\u03C2', translit: 'charis', pos: 'noun',
+    short: 'grace, favour', full: 'Favour freely shown, with no antecedent claim on the giver. Paired with \u03B4\u03C9\u03C1\u03B5\u03AC\u03BD in Romans 3:24 the redundancy is deliberate and emphatic.' },
+  G5547: { lemma: '\u03A7\u03C1\u03B9\u03C3\u03C4\u03CC\u03C2', translit: 'Christos', pos: 'proper noun',
+    short: 'Christ, Anointed One', full: 'Renders \u05DE\u05B8\u05E9\u05C1\u05B4\u05D9\u05D7\u05B7, Messiah.' },
+  G5565: { lemma: '\u03C7\u03C9\u03C1\u03AF\u03C2', translit: 'choris', pos: 'preposition',
+    short: 'apart from, without', full: 'Separately from, independent of. Emphatic by position at the head of Romans 3:21.' }
+};
+
+// ---------------------------------------------------------------------------
+// Morphology code decoder (subset of STEPBible TEGMC)
+// ---------------------------------------------------------------------------
+
+const MORPH_CODES = {
+  N: 'noun', V: 'verb', A: 'adjective', T: 'article', P: 'personal pronoun',
+  R: 'relative pronoun', D: 'demonstrative pronoun', PREP: 'preposition',
+  CONJ: 'conjunction', ADV: 'adverb', 'PRT-N': 'negative particle',
+  'CONJ-N': 'negative conjunction',
+  // tense
+  P_t: 'present', I: 'imperfect', F: 'future', A_t: 'aorist', R_t: 'perfect', L: 'pluperfect',
+  // voice
+  A_v: 'active', M: 'middle', P_v: 'passive',
+  // mood
+  I_m: 'indicative', S: 'subjunctive', O: 'optative', M_m: 'imperative',
+  N_m: 'infinitive', P_m: 'participle',
+  // case
+  N_c: 'nominative', G: 'genitive', D_c: 'dative', A_c: 'accusative', V_c: 'vocative',
+  // number / gender
+  S_n: 'singular', P_n: 'plural',
+  M_g: 'masculine', F_g: 'feminine', N_g: 'neuter'
+};
+
+// ---------------------------------------------------------------------------
+// Cross-references (TSK / OpenBible shape)
+// ---------------------------------------------------------------------------
+
+const CROSS_REFS = {
+  45003023: [
+    { start: 45003009, end: 45003009, label: 'Romans 3:9',      votes: 71 },
+    { start: 48003022, end: 48003022, label: 'Galatians 3:22',  votes: 64 },
+    { start: 45005012, end: 45005012, label: 'Romans 5:12',     votes: 58 },
+    { start: 21007020, end: 21007020, label: 'Ecclesiastes 7:20', votes: 47 },
+    { start: 11008046, end: 11008046, label: '1 Kings 8:46',    votes: 33 }
+  ],
+  45003024: [
+    { start: 49001007, end: 49001007, label: 'Ephesians 1:7',   votes: 68 },
+    { start: 51001014, end: 51001014, label: 'Colossians 1:14', votes: 55 },
+    { start: 56003007, end: 56003007, label: 'Titus 3:7',       votes: 41 }
+  ],
+  45003025: [
+    { start: 62002002, end: 62002002, label: '1 John 2:2',      votes: 82 },
+    { start: 62004010, end: 62004010, label: '1 John 4:10',     votes: 77 },
+    { start: 58009005, end: 58009005, label: 'Hebrews 9:5',     votes: 69 },
+    { start: 58002017, end: 58002017, label: 'Hebrews 2:17',    votes: 61 },
+    { start:  3016015, end:  3016015, label: 'Leviticus 16:15', votes: 54 }
+  ],
+  43001001: [
+    { start:  1001001, end:  1001001, label: 'Genesis 1:1',     votes: 94 },
+    { start: 62001001, end: 62001001, label: '1 John 1:1',      votes: 79 },
+    { start: 66019013, end: 66019013, label: 'Revelation 19:13', votes: 66 },
+    { start: 51001017, end: 51001017, label: 'Colossians 1:17', votes: 52 }
+  ],
+  43001003: [
+    { start: 51001016, end: 51001016, label: 'Colossians 1:16', votes: 88 },
+    { start: 58001002, end: 58001002, label: 'Hebrews 1:2',     votes: 74 },
+    { start: 46008006, end: 46008006, label: '1 Corinthians 8:6', votes: 60 }
+  ]
+};
+
+// ---------------------------------------------------------------------------
+// Pericopes
+// ---------------------------------------------------------------------------
+
+const PERICOPES = [
+  { start: 43001001, end: 43001005, title: 'The Word in the beginning' },
+  { start: 45003021, end: 45003026, title: 'The righteousness of God through faith' }
+];
+
+// ---------------------------------------------------------------------------
+// Parsing
+// ---------------------------------------------------------------------------
+
+function parseTokens(verseId) {
+  const src = TOKEN_SRC[verseId];
+  if (!src) return [];
+  const variants = VARIANTS[verseId] || {};
+  return src.split(' ~ ').map((chunk, i) => {
+    const [surface, strongs, morph, gloss] = chunk.split('|');
+    const position = i + 1;
+    return {
+      verse_id: verseId,
+      position,
+      surface,
+      strongs,
+      morph,
+      gloss,
+      language: 'grc',
+      editions: variants[position] || ALL_EDITIONS,
+      is_variant: Boolean(variants[position])
+    };
+  });
+}
+
+
+
+/* ===== js/corpus.js ===== */
+/**
+ * CorpusSource — read access to the immutable reference corpus.
+ *
+ * Two implementations behind one interface:
+ *
+ *   SeedCorpus     in-memory sample, no network, used for development
+ *   SqliteCorpus   the real corpus.db over sql.js-httpvfs (not yet wired)
+ *
+ * Every method returns a promise even when the seed answers synchronously, so
+ * swapping implementations changes nothing in the calling code.
+ */
+
+
+class SeedCorpus {
+  get name() { return 'seed'; }
+
+  async books()        { return BOOKS; }
+  async translations() { return TRANSLATIONS; }
+
+  /** Verse rows for one translation across an inclusive verse_id range. */
+  async verses(translationId, start, end) {
+    const table = VERSES[translationId] || {};
+    return Object.keys(table)
+      .map(Number)
+      .filter(id => id >= start && id <= end)
+      .sort((a, b) => a - b)
+      .map(id => ({ verse_id: id, text: table[id] }));
+  }
+
+  async tokens(start, end) {
+    const out = [];
+    for (let id = start; id <= end; id++) {
+      const t = parseTokens(id);
+      if (t.length) out.push(...t);
+    }
+    return out;
+  }
+
+  async lexicon(strongs) {
+    const entry = LEXICON[strongs];
+    return entry ? { strongs, ...entry } : null;
+  }
+
+  async crossRefs(verseId) {
+    return (CROSS_REFS[verseId] || []).slice().sort((a, b) => b.votes - a.votes);
+  }
+
+  async pericopeFor(verseId) {
+    return PERICOPES.find(p => verseId >= p.start && verseId <= p.end) || null;
+  }
+
+  async pericopes() { return PERICOPES; }
+
+  /** Which passages the seed actually contains — drives the navigator. */
+  async availableRanges() {
+    return PERICOPES.map(p => ({ ...p }));
+  }
+
+  // -- search surfaces -------------------------------------------------------
+  //
+  // These are what let a search cross between your notes and the text. Because
+  // both key on verse_id, "where does this word occur that I have NOT written
+  // on" is a set difference, not a heuristic. No study app that licenses its
+  // corpus can answer that question — it needs to own both halves.
+
+  /** Every verse_id the corpus has original-language tokens for. */
+  async taggedVerses() {
+    const ids = [];
+    for (const p of PERICOPES) {
+      for (let id = p.start; id <= p.end; id++) {
+        if (parseTokens(id).length) ids.push(id);
+      }
+    }
+    return ids;
+  }
+
+  /** Verse IDs where a Strong's number occurs, with the inflected forms. */
+  async occurrencesOf(strongs) {
+    const out = [];
+    for (const id of await this.taggedVerses()) {
+      const hits = parseTokens(id).filter(t => t.strongs === strongs);
+      if (hits.length) out.push({ verse_id: id, forms: hits.map(h => h.surface), count: hits.length });
+    }
+    return out;
+  }
+
+  /** Resolve a query to a Strong's number: a code, a lemma, or a gloss. */
+  async resolveStrongs(query) {
+    const q = query.trim();
+    const code = q.toUpperCase().replace(/^([GH])\s*0*(\d+)$/, (_, l, n) => l + String(n).padStart(4, '0'));
+    if (LEXICON[code]) return code;
+    const lower = q.toLowerCase();
+    for (const [s, e] of Object.entries(LEXICON)) {
+      if (e.lemma === q || e.translit.toLowerCase() === lower) return s;
+    }
+    for (const [s, e] of Object.entries(LEXICON)) {
+      if (e.short.toLowerCase().includes(lower)) return s;
+    }
+    return null;
+  }
+
+  /** Substring search over local translation text and Greek surface forms. */
+  async searchText(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const hits = [];
+    for (const [tid, table] of Object.entries(VERSES)) {
+      for (const [idStr, text] of Object.entries(table)) {
+        if (text.toLowerCase().includes(q)) {
+          hits.push({ verse_id: Number(idStr), translation: tid, text });
+        }
+      }
+    }
+    return hits.sort((a, b) => a.verse_id - b.verse_id);
+  }
+
+  async lexiconSearch(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return Object.entries(LEXICON)
+      .filter(([s, e]) =>
+        s.toLowerCase().includes(q) || e.lemma.includes(query.trim()) ||
+        e.translit.toLowerCase().includes(q) || e.short.toLowerCase().includes(q) ||
+        e.full.toLowerCase().includes(q))
+      .map(([strongs, e]) => ({ strongs, ...e }));
+  }
+
+  decodeMorph(code) { return decodeMorph(code); }
+}
+
+/**
+ * The real corpus. Wire this up once pipeline/build_corpus.py has produced
+ * client/data/corpus.db.
+ *
+ * Implementation sketch:
+ *   import { createDbWorker } from 'sql.js-httpvfs';
+ *   this.worker = await createDbWorker(
+ *     [{ from: 'inline', config: { serverMode: 'full',
+ *        url: '/data/corpus.db', requestChunkSize: 4096 } }],
+ *     workerUrl, wasmUrl);
+ *   ...then each method becomes a single SQL query against the schema in
+ *   db/corpus_schema.sql. Page size there is 4096 to match requestChunkSize.
+ *
+ * Nothing in app.js changes.
+ */
+class SqliteCorpus {
+  get name() { return 'sqlite'; }
+  constructor(dbUrl = '/data/corpus.db') { this.dbUrl = dbUrl; }
+  async init() { throw new Error('SqliteCorpus is not wired up yet. Build corpus.db first.'); }
+}
+
+// ---------------------------------------------------------------------------
+// Morphology decoding
+// ---------------------------------------------------------------------------
+
+const TENSE = { P: 'present', I: 'imperfect', F: 'future', A: 'aorist', R: 'perfect', L: 'pluperfect', '2A': 'aorist', '2R': 'perfect', '2F': 'future' };
+const VOICE = { A: 'active', M: 'middle', P: 'passive', E: 'middle or passive', D: 'deponent', O: 'middle or passive deponent' };
+const MOOD  = { I: 'indicative', S: 'subjunctive', O: 'optative', M: 'imperative', N: 'infinitive', P: 'participle' };
+const CASE  = { N: 'nominative', G: 'genitive', D: 'dative', A: 'accusative', V: 'vocative' };
+const GEND  = { M: 'masculine', F: 'feminine', N: 'neuter' };
+const NUM   = { S: 'singular', P: 'plural' };
+const POS   = { N: 'noun', V: 'verb', A: 'adjective', T: 'article', P: 'pronoun', R: 'relative pronoun', D: 'demonstrative pronoun', PREP: 'preposition', CONJ: 'conjunction', ADV: 'adverb' };
+
+/**
+ * Turn "V-2AAI-3P" into an ordered list of parsed components for the ribbon.
+ * Returns [{ label, value }] so the UI never has to know the code grammar.
+ */
+function decodeMorph(code) {
+  if (!code) return [];
+  if (POS[code]) return [{ label: 'part of speech', value: POS[code] }];
+
+  const parts = code.split('-');
+  const head = parts[0];
+  const out = [];
+
+  if (head === 'V') {
+    out.push({ label: 'part of speech', value: 'verb' });
+    const tvm = parts[1] || '';
+    const m = tvm.match(/^(2?[PIFARL])([AMPEDO])([ISOMNP])$/);
+    if (m) {
+      out.push({ label: 'tense', value: TENSE[m[1]] || m[1] });
+      out.push({ label: 'voice', value: VOICE[m[2]] || m[2] });
+      out.push({ label: 'mood',  value: MOOD[m[3]]  || m[3] });
+      if (m[1].startsWith('2')) out.push({ label: 'form', value: 'second aorist / perfect' });
+    }
+    const tail = parts[2] || '';
+    if (/^[123][SP]$/.test(tail)) {
+      out.push({ label: 'person', value: tail[0] + (tail[0] === '1' ? 'st' : tail[0] === '2' ? 'nd' : 'rd') });
+      out.push({ label: 'number', value: NUM[tail[1]] });
+    } else if (/^[NGDAV][SP][MFN]$/.test(tail)) {
+      out.push({ label: 'case',   value: CASE[tail[0]] });
+      out.push({ label: 'number', value: NUM[tail[1]] });
+      out.push({ label: 'gender', value: GEND[tail[2]] });
+    }
+    return out;
+  }
+
+  if (POS[head]) out.push({ label: 'part of speech', value: POS[head] });
+  const decl = parts[1] || '';
+  if (/^[NGDAV][SP][MFN]$/.test(decl)) {
+    out.push({ label: 'case',   value: CASE[decl[0]] });
+    out.push({ label: 'number', value: NUM[decl[1]] });
+    out.push({ label: 'gender', value: GEND[decl[2]] });
+  }
+  return out;
+}
+
+
+/* ===== js/store.js ===== */
+/**
+ * Store — read/write access to everything you create.
+ *
+ * The ONLY mutable data in the system: notes, anchors, tags, chains,
+ * highlights, lexical annotations.
+ *
+ *   LocalStore     browser-side persistence for development
+ *   CatalystStore  Catalyst Data Store via functions/notes-api (not yet wired)
+ *
+ * Both satisfy the same interface. app.js never knows which is running.
+ */
+
+const KEY = 'workbench:userdata:v1';
+
+/** Pull a readable window of text around the first match. */
+function excerpt(text, q, pad = 60) {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  const at = flat.toLowerCase().indexOf(q);
+  if (at === -1) return flat.slice(0, pad * 2);
+  const from = Math.max(0, at - pad);
+  const to = Math.min(flat.length, at + q.length + pad);
+  return (from > 0 ? '\u2026' : '') + flat.slice(from, to) + (to < flat.length ? '\u2026' : '');
+}
+
+function emptyState() {
+  return { notes: [], anchors: [], tags: [], noteTags: [], seq: 1 };
+}
+
+class LocalStore {
+  get name() { return 'local'; }
+
+  constructor() {
+    this.state = emptyState();
+    this.backing = null;
+    this.warning = null;
+  }
+
+  async init() {
+    // Prefer host-provided persistence when present; fall back to session
+    // memory rather than failing. Never localStorage.
+    if (typeof window !== 'undefined' && window.storage && window.storage.get) {
+      this.backing = window.storage;
+      try {
+        const res = await window.storage.get(KEY);
+        if (res && res.value) this.state = JSON.parse(res.value);
+      } catch {
+        // No key yet. Starting empty is the correct outcome, not an error.
+      }
+    } else {
+      this.warning = 'Notes are held in memory for this session only. They persist once this is deployed to Catalyst.';
+    }
+    return this;
+  }
+
+  async #flush() {
+    if (!this.backing) return;
+    try {
+      await this.backing.set(KEY, JSON.stringify(this.state));
+    } catch (err) {
+      console.error('Could not save notes:', err);
+      throw new Error('Changes were not saved. Check the connection and try again.');
+    }
+  }
+
+  #id() { return this.state.seq++; }
+
+  // -- notes ---------------------------------------------------------------
+
+  async listNotes() { return this.state.notes.slice(); }
+
+  async notesForRange(start, end) {
+    const hits = new Map();
+    for (const a of this.state.anchors) {
+      if (a.start_verse_id <= end && a.end_verse_id >= start) {
+        const note = this.state.notes.find(n => n.note_id === a.note_id);
+        if (note && !note.is_archived) {
+          if (!hits.has(note.note_id)) hits.set(note.note_id, { ...note, anchors: [] });
+          hits.get(note.note_id).anchors.push(a);
+        }
+      }
+    }
+    return [...hits.values()];
+  }
+
+  async createNote({ note_type, title, body_md, anchors }) {
+    const now = new Date().toISOString();
+    const note = {
+      note_id: this.#id(), note_type,
+      title: title || '', body_md: body_md || '',
+      is_pinned: 0, is_archived: 0, created_at: now, updated_at: now
+    };
+    this.state.notes.push(note);
+    for (const a of anchors || []) {
+      this.state.anchors.push({
+        anchor_id: this.#id(), note_id: note.note_id,
+        anchor_type: a.anchor_type || 'verse_range',
+        start_verse_id: a.start_verse_id, end_verse_id: a.end_verse_id,
+        is_primary: a.is_primary ? 1 : 0, label: a.label || null, sort_order: 0
+      });
+    }
+    await this.#flush();
+    return note;
+  }
+
+  async updateNote(noteId, patch) {
+    const note = this.state.notes.find(n => n.note_id === noteId);
+    if (!note) throw new Error('That note no longer exists.');
+    Object.assign(note, patch, { updated_at: new Date().toISOString() });
+    await this.#flush();
+    return note;
+  }
+
+  async deleteNote(noteId) {
+    this.state.notes = this.state.notes.filter(n => n.note_id !== noteId);
+    this.state.anchors = this.state.anchors.filter(a => a.note_id !== noteId);
+    this.state.noteTags = this.state.noteTags.filter(nt => nt.note_id !== noteId);
+    await this.#flush();
+  }
+
+  async anchorsForNote(noteId) {
+    return this.state.anchors.filter(a => a.note_id === noteId);
+  }
+
+  async addAnchor(noteId, anchor) {
+    const row = {
+      anchor_id: this.#id(), note_id: noteId,
+      anchor_type: anchor.anchor_type || 'reference',
+      start_verse_id: anchor.start_verse_id, end_verse_id: anchor.end_verse_id,
+      is_primary: 0, label: anchor.label || null, sort_order: 0
+    };
+    this.state.anchors.push(row);
+    await this.#flush();
+    return row;
+  }
+
+  async removeAnchor(anchorId) {
+    this.state.anchors = this.state.anchors.filter(a => a.anchor_id !== anchorId);
+    await this.#flush();
+  }
+
+  /** Verse IDs that carry at least one note — drives the gutter marks. */
+  async anchoredVerses(start, end) {
+    const set = new Set();
+    for (const a of this.state.anchors) {
+      const from = Math.max(a.start_verse_id, start);
+      const to = Math.min(a.end_verse_id, end);
+      for (let id = from; id <= to; id++) set.add(id);
+    }
+    return set;
+  }
+
+  // -- comments ------------------------------------------------------------
+  //
+  // A "comment" is the canonical annotation on a verse: at most one per verse,
+  // keyed by the START verse of its primary anchor. This is the commentary
+  // spine. Exposition and document notes are unconstrained and hang off it.
+  //
+  // The uniqueness is enforced here rather than in the database because
+  // Catalyst Data Store has no partial unique indexes. When CatalystStore is
+  // implemented, notes-api must enforce the same rule server-side.
+
+  #primaryAnchor(noteId) {
+    return this.state.anchors.find(a => a.note_id === noteId && a.is_primary);
+  }
+
+  /** The canonical comment on a verse, or null. */
+  async getComment(verseId) {
+    for (const note of this.state.notes) {
+      if (note.note_type !== 'annotation' || note.is_archived) continue;
+      const a = this.#primaryAnchor(note.note_id);
+      if (a && a.start_verse_id === verseId) return { ...note, anchor: a };
+    }
+    return null;
+  }
+
+  /**
+   * Create or replace the comment on a verse. Returns { note, created }.
+   * Callers use `created` to tell the difference between writing something
+   * new and revising something that was already there.
+   */
+  async upsertComment(startVerseId, endVerseId, { title, body_md }) {
+    const existing = await this.getComment(startVerseId);
+    if (existing) {
+      const anchor = this.#primaryAnchor(existing.note_id);
+      if (anchor) anchor.end_verse_id = endVerseId;
+      const note = await this.updateNote(existing.note_id, { title, body_md });
+      return { note, created: false };
+    }
+    const note = await this.createNote({
+      note_type: 'annotation', title, body_md,
+      anchors: [{ anchor_type: 'verse_range', start_verse_id: startVerseId,
+                  end_verse_id: endVerseId, is_primary: true }]
+    });
+    return { note, created: true };
+  }
+
+  /** Every comment in canonical order. This is the commentary. */
+  async allComments() {
+    const out = [];
+    for (const note of this.state.notes) {
+      if (note.note_type !== 'annotation' || note.is_archived) continue;
+      const a = this.#primaryAnchor(note.note_id);
+      if (a) out.push({ ...note, start: a.start_verse_id, end: a.end_verse_id });
+    }
+    return out.sort((x, y) => x.start - y.start);
+  }
+
+  async commentsForBook(bookId) {
+    const lo = bookId * 1e6, hi = lo + 999999;
+    return (await this.allComments()).filter(c => c.start >= lo && c.start <= hi);
+  }
+
+  /** Verse IDs carrying a comment, for the coverage map. */
+  async coverage(bookId) {
+    const set = new Set();
+    for (const c of await this.commentsForBook(bookId)) {
+      for (let id = c.start; id <= c.end; id++) set.add(id);
+    }
+    return set;
+  }
+
+  /** Non-comment notes: expositions and standalone documents. */
+  async essays() {
+    return this.state.notes
+      .filter(n => n.note_type !== 'annotation' && !n.is_archived)
+      .map(n => ({ ...n, anchors: this.state.anchors.filter(a => a.note_id === n.note_id) }));
+  }
+
+  // -- search --------------------------------------------------------------
+  //
+  // Substring matching over in-memory state. Once corpus.db is live this
+  // becomes an FTS5 query — and because notes and corpus share the verse_id
+  // key, note search and scripture search can run in ONE statement. Keep the
+  // return shape stable so that swap changes nothing upstream.
+
+  async searchNotes(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const hits = [];
+    for (const n of this.state.notes) {
+      if (n.is_archived) continue;
+      const hay = `${n.title}\n${n.body_md}`.toLowerCase();
+      const at = hay.indexOf(q);
+      if (at === -1) continue;
+      const a = this.#primaryAnchor(n.note_id) ||
+                this.state.anchors.find(x => x.note_id === n.note_id);
+      hits.push({
+        note: n,
+        start: a ? a.start_verse_id : null,
+        end: a ? a.end_verse_id : null,
+        excerpt: excerpt(`${n.title} ${n.body_md}`, q)
+      });
+    }
+    return hits.sort((x, y) => (x.start || 0) - (y.start || 0));
+  }
+
+  // -- tags ----------------------------------------------------------------
+
+  async listTags() { return this.state.tags.slice(); }
+
+  async createTag(name, color) {
+    const existing = this.state.tags.find(t => t.name.toLowerCase() === name.toLowerCase());
+    if (existing) return existing;
+    const tag = { tag_id: this.#id(), name, color: color || null,
+                  parent_tag_id: null, created_at: new Date().toISOString() };
+    this.state.tags.push(tag);
+    await this.#flush();
+    return tag;
+  }
+
+  async tagsForNote(noteId) {
+    const ids = this.state.noteTags.filter(nt => nt.note_id === noteId).map(nt => nt.tag_id);
+    return this.state.tags.filter(t => ids.includes(t.tag_id));
+  }
+
+  async setNoteTags(noteId, tagIds) {
+    this.state.noteTags = this.state.noteTags.filter(nt => nt.note_id !== noteId);
+    for (const tag_id of tagIds) this.state.noteTags.push({ note_id: noteId, tag_id });
+    await this.#flush();
+  }
+
+  async notesWithTag(tagId) {
+    const ids = this.state.noteTags.filter(nt => nt.tag_id === tagId).map(nt => nt.note_id);
+    return this.state.notes.filter(n => ids.includes(n.note_id));
+  }
+}
+
+/**
+ * Production store. Every method here becomes a fetch to
+ * functions/notes-api, which does the ZCQL against Data Store.
+ *
+ * Remember when implementing: Data Store supplies ROWID as the primary key,
+ * does not enforce foreign keys, and has no composite primary keys — so
+ * cascade deletes and the note_tags uniqueness constraint are this layer's
+ * responsibility. See the translation notes in db/userdata_schema.sql.
+ */
+class CatalystStore {
+  get name() { return 'catalyst'; }
+  constructor(base = '/server/notes-api') { this.base = base; }
+  async init() { throw new Error('CatalystStore is not wired up yet.'); }
+}
+
+
+/* ===== js/app.js ===== */
+/**
+ * Scripture Workbench — four views over one dataset.
+ *
+ *   read        three panes: text, exposition, comment
+ *   commentary  your comments read straight through, in canonical order
+ *   coverage    what you've written on and what you haven't
+ *   search      across your notes, the scripture text, and the lexicon
+ *
+ * All four read through CorpusSource and Store. Swapping SeedCorpus →
+ * SqliteCorpus and LocalStore → CatalystStore requires no edits below.
+ */
+
+
+
+
+// --- verse id helpers -------------------------------------------------------
+
+const bookOf   = id => BOOKS.find(b => b.book_id === Math.floor(id / 1e6)) || {};
+const bookName = id => bookOf(id).name   || '?';
+const bookAbbr = id => bookOf(id).abbrev || '?';
+const chapterOf = id => Math.floor(id / 1000) % 1000;
+const verseOf   = id => id % 1000;
+
+const ref      = id => `${bookName(id)} ${chapterOf(id)}:${verseOf(id)}`;
+const shortRef = id => `${bookAbbr(id)} ${chapterOf(id)}:${verseOf(id)}`;
+
+function rangeRef(start, end) {
+  if (start === end) return ref(start);
+  return chapterOf(start) === chapterOf(end)
+    ? `${ref(start)}\u2013${verseOf(end)}`
+    : `${ref(start)}\u2013${ref(end)}`;
+}
+
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+const $ = id => document.getElementById(id);
+
+function highlight(text, q) {
+  const frag = document.createDocumentFragment();
+  if (!q) { frag.append(document.createTextNode(text)); return frag; }
+  const lower = text.toLowerCase(), needle = q.toLowerCase();
+  let i = 0, at;
+  while ((at = lower.indexOf(needle, i)) !== -1) {
+    if (at > i) frag.append(document.createTextNode(text.slice(i, at)));
+    frag.append(el('mark', null, text.slice(at, at + q.length)));
+    i = at + q.length;
+  }
+  frag.append(document.createTextNode(text.slice(i)));
+  return frag;
+}
+
+// --- state ------------------------------------------------------------------
+
+const state = {
+  corpus: null, store: null,
+  mode: 'read',
+  passage: null,
+  versions: ['THGNT', 'KJV'],
+  activeToken: null,
+  selection: null,
+  editing: null,        // note_id being revised, if any
+  essayMode: false,
+  tagFilter: null,
+  translations: [],
+  query: ''
+};
+
+// --- boot -------------------------------------------------------------------
+
+async function boot() {
+  state.corpus = new SeedCorpus();
+  state.store  = await new LocalStore().init();
+  state.translations = await state.corpus.translations();
+
+  const ranges = await state.corpus.availableRanges();
+  state.passage = ranges[0];
+  state.ranges = ranges;
+
+  wireModes();
+  renderRail();
+  await renderMode();
+}
+
+function wireModes() {
+  for (const btn of $('mode-nav').querySelectorAll('button')) {
+    btn.onclick = async () => {
+      state.mode = btn.dataset.mode;
+      for (const b of $('mode-nav').querySelectorAll('button')) {
+        b.setAttribute('aria-current', String(b === btn));
+      }
+      await renderMode();
+    };
+  }
+}
+
+async function renderMode() {
+  const three = $('three-pane'), wide = $('wide-view');
+  const reading = state.mode === 'read';
+  three.hidden = !reading;
+  wide.hidden = reading;
+  $('rail-passages').hidden = !reading;
+
+  if (reading) return renderRead();
+  if (state.mode === 'commentary') return renderCommentary();
+  if (state.mode === 'coverage')   return renderCoverage();
+  if (state.mode === 'search')     return renderSearch();
+}
+
+async function renderRead() {
+  await Promise.all([renderText(), renderExposition(), renderComment()]);
+  await renderStat();
+}
+
+// --- rail -------------------------------------------------------------------
+
+function renderRail() {
+  const list = $('passage-list');
+  list.replaceChildren(...state.ranges.map(r => {
+    const li = el('li');
+    const btn = el('button');
+    btn.append(document.createTextNode(r.title));
+    btn.append(el('span', 'ref', rangeRef(r.start, r.end)));
+    btn.setAttribute('aria-current', String(r === state.passage));
+    btn.onclick = async () => {
+      state.passage = r;
+      state.activeToken = null; state.selection = null; state.editing = null;
+      renderRail();
+      await renderRead();
+    };
+    li.append(btn);
+    return li;
+  }));
+
+  if (state.store.warning) {
+    const box = $('store-warning');
+    box.textContent = state.store.warning;
+    box.hidden = false;
+  }
+  renderTagCloud();
+}
+
+async function renderTagCloud() {
+  const tags = await state.store.listTags();
+  const wrap = $('tag-cloud');
+  if (!tags.length) { wrap.replaceChildren(el('span', 'label', 'none yet')); return; }
+  wrap.replaceChildren(...tags.map(t => {
+    const b = el('button', 'chip', t.name);
+    b.setAttribute('aria-pressed', String(state.tagFilter === t.tag_id));
+    b.onclick = async () => {
+      state.tagFilter = state.tagFilter === t.tag_id ? null : t.tag_id;
+      renderTagCloud();
+      await renderMode();
+    };
+    return b;
+  }));
+}
+
+async function renderStat() {
+  const comments = await state.store.allComments();
+  const essays = await state.store.essays();
+  const tagged = (await state.corpus.taggedVerses()).length;
+  const el2 = $('rail-stat');
+  el2.replaceChildren();
+  const line = (label, val) => {
+    const d = el('div');
+    d.append(document.createTextNode(label + ' '));
+    d.append(Object.assign(document.createElement('b'), { textContent: String(val) }));
+    return d;
+  };
+  el2.append(line('comments', comments.length));
+  el2.append(line('essays', essays.length));
+  el2.append(line('verses in corpus', tagged));
+}
+
+// --- text pane --------------------------------------------------------------
+
+function renderVersionBar() {
+  $('version-bar').replaceChildren(...state.translations.map(t => {
+    const b = el('button', null, t.id);
+    const on = state.versions.includes(t.id);
+    b.setAttribute('aria-pressed', String(on));
+    b.title = t.is_local ? t.name : `${t.name} \u2014 fetched live, needs the Catalyst proxy`;
+    if (!t.is_local) b.disabled = true;
+    b.onclick = async () => {
+      state.versions = on ? state.versions.filter(v => v !== t.id) : [...state.versions, t.id];
+      await renderText(); renderVersionBar();
+    };
+    return b;
+  }));
+}
+
+async function renderText() {
+  const { start, end } = state.passage;
+  $('text-head').textContent = rangeRef(start, end);
+  $('text-count').textContent = `${end - start + 1} vv`;
+  renderVersionBar();
+
+  const [tokens, anchored] = await Promise.all([
+    state.corpus.tokens(start, end),
+    state.store.anchoredVerses(start, end)
+  ]);
+
+  const texts = {};
+  for (const v of state.versions) {
+    texts[v] = Object.fromEntries(
+      (await state.corpus.verses(v, start, end)).map(r => [r.verse_id, r.text]));
+  }
+
+  const blocks = [];
+  for (let id = start; id <= end; id++) {
+    const block = el('div', 'verse-block');
+    block.dataset.verse = id;
+    block.setAttribute('aria-selected', String(
+      Boolean(state.selection && id >= state.selection.start && id <= state.selection.end)));
+
+    const row = el('div', 'verse-row');
+    const num = el('div', 'verse-num');
+    const numBtn = el('button', null, String(verseOf(id)));
+    numBtn.title = `Comment on ${ref(id)}`;
+    numBtn.onclick = () => selectVerse(id);
+    num.append(numBtn);
+    if (anchored.has(id)) num.append(el('span', 'anchor-mark'));
+    row.append(num);
+
+    const body = el('div', 'verse-body');
+    for (const v of state.versions) {
+      const trn = state.translations.find(t => t.id === v);
+      if (trn && trn.lang === 'grc') {
+        const line = el('div', 'line-grc');
+        const vt = tokens.filter(t => t.verse_id === id);
+        vt.forEach((t, i) => {
+          const w = el('span', 'w' + (t.is_variant ? ' variant' : ''), t.surface);
+          w.setAttribute('role', 'button');
+          w.setAttribute('tabindex', '0');
+          w.setAttribute('aria-pressed', String(
+            state.activeToken && state.activeToken.verse_id === id &&
+            state.activeToken.position === t.position));
+          w.title = `${t.gloss} \u00b7 ${t.strongs}`;
+          const open = () => openToken(t);
+          w.onclick = open;
+          w.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
+          line.append(w);
+          if (i < vt.length - 1) line.append(document.createTextNode(' '));
+        });
+        if (!vt.length && texts[v] && texts[v][id]) line.textContent = texts[v][id];
+        body.append(line);
+      } else {
+        const line = el('div', 'line-eng');
+        line.append(el('span', 'tr', v));
+        const t = texts[v] && texts[v][id];
+        if (t) line.append(document.createTextNode(t));
+        else { line.classList.add('pending'); line.append(document.createTextNode('Not in the seed corpus.')); }
+        body.append(line);
+      }
+    }
+    row.append(body);
+    block.append(row);
+
+    const ribbon = el('div', 'ribbon');
+    ribbon.dataset.for = id;
+    ribbon.append(el('div'));
+    ribbon.append(el('div', 'ribbon-body'));
+    block.append(ribbon);
+    blocks.push(block);
+  }
+
+  $('text-body').replaceChildren(...blocks);
+  if (state.activeToken) paintRibbon();
+}
+
+async function selectVerse(id) {
+  if (state.selection && state.selection.start === id && state.selection.end === id) {
+    state.selection = null;
+  } else if (state.selection && id > state.selection.start && !state.essayMode) {
+    state.selection = { start: state.selection.start, end: id };
+  } else {
+    state.selection = { start: id, end: id };
+  }
+  await renderText();
+  await renderComment();
+}
+
+// --- word ribbon ------------------------------------------------------------
+
+async function openToken(token) {
+  const same = state.activeToken &&
+    state.activeToken.verse_id === token.verse_id &&
+    state.activeToken.position === token.position;
+  state.activeToken = same ? null : token;
+  await renderText();
+  await renderExposition();
+}
+
+async function paintRibbon() {
+  const t = state.activeToken;
+  if (!t) return;
+  const ribbon = document.querySelector(`.ribbon[data-for="${t.verse_id}"]`);
+  if (!ribbon) return;
+
+  const entry = await state.corpus.lexicon(t.strongs);
+  const body = ribbon.querySelector('.ribbon-body');
+  body.replaceChildren();
+
+  const head = el('div', 'ribbon-lemma');
+  head.append(el('span', 'lemma', entry ? entry.lemma : t.surface));
+  if (entry) head.append(el('span', 'translit', entry.translit));
+  head.append(el('span', 'strongs', t.strongs));
+  body.append(head);
+  body.append(el('div', 'ribbon-gloss', t.gloss));
+
+  const parse = el('div', 'parse');
+  const decoded = decodeMorph(t.morph);
+  const chips = decoded.length ? decoded : [{ label: 'code', value: t.morph || '\u2014' }];
+  for (const d of chips) {
+    const chip = el('div', 'parse-chip');
+    chip.append(el('span', 'k', d.label));
+    chip.append(el('span', 'v', d.value));
+    parse.append(chip);
+  }
+  body.append(parse);
+
+  const ALL = ['THGNT', 'NA28', 'SBLGNT', 'TREG', 'WH', 'TR', 'BYZ'];
+  const app = el('div', 'apparatus' + (t.is_variant ? ' split' : ''));
+  app.append(el('span', 'label', t.is_variant ? 'editions divide' : 'in all editions'));
+  for (const ed of ALL) app.append(el('span', `ed ${t.editions.includes(ed) ? 'present' : 'absent'}`, ed));
+  body.append(app);
+
+  const actions = el('div', 'ribbon-actions');
+  const noteBtn = el('button', 'mini', 'Comment on this verse');
+  noteBtn.onclick = async () => {
+    state.selection = { start: t.verse_id, end: t.verse_id };
+    await renderText(); await renderComment();
+    $('note-body').focus();
+  };
+  actions.append(noteBtn);
+  const traceBtn = el('button', 'mini', `Trace ${t.strongs}`);
+  traceBtn.onclick = async () => {
+    state.query = t.strongs; state.mode = 'search';
+    for (const b of $('mode-nav').querySelectorAll('button'))
+      b.setAttribute('aria-current', String(b.dataset.mode === 'search'));
+    await renderMode();
+  };
+  actions.append(traceBtn);
+  body.append(actions);
+
+  ribbon.classList.add('open');
+}
+
+// --- exposition pane --------------------------------------------------------
+
+async function renderExposition() {
+  const pane = $('expo-body');
+  const t = state.activeToken;
+  const sections = [];
+
+  if (t) {
+    const entry = await state.corpus.lexicon(t.strongs);
+    const lex = el('section', 'expo-section');
+    lex.append(el('h3', 'label', 'lexicon'));
+    if (entry) {
+      const head = el('div', 'lex-head');
+      head.append(el('span', 'lemma', entry.lemma));
+      head.append(el('span', 'translit', entry.translit));
+      head.append(el('span', 'pos', entry.pos));
+      lex.append(head);
+      lex.append(el('p', 'lex-short', entry.short));
+      lex.append(el('p', 'lex-full', entry.full));
+    } else {
+      lex.append(el('p', 'lex-full',
+        `No entry for ${t.strongs} in the seed lexicon. The full corpus carries the complete extended Strong's set plus LSJ.`));
+    }
+    sections.push(lex);
+
+    const { start, end } = state.passage;
+    const all = await state.corpus.tokens(start, end);
+    const others = all.filter(x => x.strongs === t.strongs);
+    if (others.length > 1) {
+      const occ = el('section', 'expo-section');
+      occ.append(el('h3', 'label', `also in this passage \u00b7 ${others.length}`));
+      const wrap = el('div', 'occurrences');
+      for (const o of others) {
+        const b = el('button', 'occ', `${shortRef(o.verse_id)} ${o.surface}`);
+        b.onclick = () => openToken(o);
+        wrap.append(b);
+      }
+      occ.append(wrap);
+      sections.push(occ);
+    }
+  }
+
+  const focus = state.selection ? state.selection.start : (t ? t.verse_id : state.passage.start);
+  const xrefs = await state.corpus.crossRefs(focus);
+  const xs = el('section', 'expo-section');
+  xs.append(el('h3', 'label', `cross-references \u00b7 ${ref(focus)}`));
+  if (xrefs.length) {
+    const ul = el('ul', 'xref-list');
+    const max = Math.max(...xrefs.map(x => x.votes));
+    for (const x of xrefs) {
+      const li = el('li');
+      li.append(el('span', 'ref', x.label));
+      const w = el('span', 'weight');
+      w.style.width = `${Math.round((x.votes / max) * 52) + 6}px`;
+      li.append(w);
+      li.title = `${x.votes} relevance votes \u00b7 TSK / OpenBible`;
+      ul.append(li);
+    }
+    xs.append(ul);
+  } else {
+    xs.append(el('p', 'lex-full', 'No references for this verse in the seed set.'));
+  }
+  sections.push(xs);
+
+  if (!t) {
+    const hint = el('section', 'empty');
+    hint.append(el('strong', null, 'Open a word'));
+    hint.append(document.createTextNode(
+      'Click any Greek word for its lexical entry, parsing, and which printed editions carry it. A dotted red underline marks where the editions divide.'));
+    sections.unshift(hint);
+  }
+  pane.replaceChildren(...sections);
+}
+
+// --- comment pane -----------------------------------------------------------
+
+async function renderComment() {
+  const sel = state.selection;
+  const target = $('compose-target');
+  const hint = $('compose-hint');
+  const save = $('note-save');
+  const essayBtn = $('note-essay');
+
+  essayBtn.setAttribute('aria-pressed', String(state.essayMode));
+  essayBtn.textContent = state.essayMode ? 'Writing an essay' : 'Essay\u2026';
+
+  if (!sel) {
+    target.textContent = 'click a verse number to comment';
+    hint.textContent = '';
+    hint.className = 'compose-hint';
+    save.disabled = true;
+    state.editing = null;
+  } else if (state.essayMode) {
+    target.textContent = `essay linked to ${rangeRef(sel.start, sel.end)}`;
+    hint.textContent = 'Essays are standalone. Many can link to the same passage.';
+    hint.className = 'compose-hint';
+    save.disabled = false;
+    save.textContent = 'Save essay';
+  } else {
+    const existing = await state.store.getComment(sel.start);
+    target.textContent = `${rangeRef(sel.start, sel.end)}`;
+    save.disabled = false;
+    if (existing) {
+      state.editing = existing.note_id;
+      $('note-title').value = existing.title || '';
+      $('note-body').value = existing.body_md || '';
+      hint.textContent = 'You have already commented here. Saving revises it.';
+      hint.className = 'compose-hint revising';
+      save.textContent = 'Revise comment';
+    } else {
+      state.editing = null;
+      hint.textContent = 'One comment per verse. This is the commentary spine.';
+      hint.className = 'compose-hint';
+      save.textContent = 'Save comment';
+    }
+  }
+
+  const { start, end } = state.passage;
+  let notes = await state.store.notesForRange(start, end);
+  if (state.tagFilter) {
+    const tagged = await state.store.notesWithTag(state.tagFilter);
+    const ids = new Set(tagged.map(n => n.note_id));
+    notes = notes.filter(n => ids.has(n.note_id));
+  }
+  $('notes-count').textContent = String(notes.length);
+
+  const pane = $('notes-body');
+  if (!notes.length) {
+    const empty = el('div', 'empty');
+    empty.append(el('strong', null, 'Nothing written here yet'));
+    empty.append(document.createTextNode(
+      'Click a verse number, then write. Each comment you save becomes an entry in the commentary.'));
+    pane.replaceChildren(empty);
+    return;
+  }
+
+  const cards = [];
+  for (const n of notes.sort((a, b) => b.updated_at.localeCompare(a.updated_at))) {
+    const card = el('article', 'note-card');
+    const meta = el('div', 'meta');
+    meta.append(el('span', 'note-type', n.note_type === 'annotation' ? 'comment' : n.note_type));
+    const del = el('button', 'del', 'remove');
+    del.onclick = async () => {
+      await state.store.deleteNote(n.note_id);
+      state.editing = null;
+      await renderRead();
+    };
+    meta.append(del);
+    card.append(meta);
+    if (n.title) card.append(el('h4', null, n.title));
+    if (n.body_md) card.append(el('div', 'body', n.body_md));
+
+    const anchors = el('div', 'anchors');
+    for (const a of n.anchors) anchors.append(el('span', 'anchor-pill', rangeRef(a.start_verse_id, a.end_verse_id)));
+    for (const t of await state.store.tagsForNote(n.note_id)) anchors.append(el('span', 'chip', t.name));
+    card.append(anchors);
+    cards.push(card);
+  }
+  pane.replaceChildren(...cards);
+}
+
+async function saveComment() {
+  const sel = state.selection;
+  if (!sel) return;
+  const title = $('note-title').value.trim();
+  const body  = $('note-body').value.trim();
+  const tagText = $('note-tags').value.trim();
+  if (!title && !body) { $('note-body').focus(); return; }
+
+  let noteId;
+  if (state.essayMode) {
+    const note = await state.store.createNote({
+      note_type: 'document', title, body_md: body,
+      anchors: [{ anchor_type: 'reference', start_verse_id: sel.start,
+                  end_verse_id: sel.end, is_primary: true }]
+    });
+    noteId = note.note_id;
+  } else {
+    const { note } = await state.store.upsertComment(sel.start, sel.end, { title, body_md: body });
+    noteId = note.note_id;
+  }
+
+  if (tagText) {
+    const ids = [];
+    for (const name of tagText.split(',').map(s => s.trim()).filter(Boolean)) {
+      ids.push((await state.store.createTag(name)).tag_id);
+    }
+    await state.store.setNoteTags(noteId, ids);
+  }
+
+  clearCompose();
+  state.selection = null;
+  state.essayMode = false;
+  renderTagCloud();
+  await renderRead();
+}
+
+function clearCompose() {
+  $('note-title').value = '';
+  $('note-body').value = '';
+  $('note-tags').value = '';
+}
+
+// --- commentary view --------------------------------------------------------
+
+async function renderCommentary() {
+  $('wide-head').textContent = 'commentary';
+  const comments = await state.store.allComments();
+  $('wide-count').textContent = `${comments.length} entries`;
+
+  const body = $('wide-body');
+  if (!comments.length) {
+    const empty = el('div', 'empty');
+    empty.append(el('strong', null, 'The commentary is empty'));
+    empty.append(document.createTextNode(
+      'Comments you write while reading collect here, in canonical order. Go to Read, click a verse number, and write something.'));
+    body.replaceChildren(empty);
+    return;
+  }
+
+  const wrap = el('div', 'commentary');
+  let currentBook = null;
+  let previous = null;
+  const english = state.versions.find(v => {
+    const t = state.translations.find(x => x.id === v);
+    return t && t.lang === 'eng' && t.is_local;
+  }) || 'KJV';
+
+  for (const c of comments) {
+    const bid = Math.floor(c.start / 1e6);
+    if (bid !== currentBook) {
+      currentBook = bid;
+      previous = null;
+      const head = el('div', 'comm-book');
+      head.append(el('h2', null, bookName(c.start)));
+      const exp = el('button', 'btn ghost', 'Export markdown');
+      exp.onclick = () => exportBook(bid);
+      head.append(exp);
+      wrap.append(head);
+    }
+
+    const entry = el('div', 'comm-entry');
+
+    if (previous !== null && c.start > previous + 1) {
+      const gapCount = c.start - previous - 1;
+      entry.append(el('div', 'comm-gap',
+        `${gapCount} verse${gapCount === 1 ? '' : 's'} without comment`));
+    }
+    previous = c.end;
+
+    const refCol = el('div', 'comm-ref');
+    const jump = el('button', null, rangeRef(c.start, c.end));
+    jump.title = 'Open in Read';
+    jump.onclick = () => jumpTo(c.start);
+    refCol.append(jump);
+    entry.append(refCol);
+
+    const main = el('div');
+    const rows = await state.corpus.verses(english, c.start, c.end);
+    if (rows.length) {
+      main.append(el('div', 'comm-scripture', rows.map(r => r.text).join(' ')));
+    }
+    if (c.title) main.append(el('h3', 'comm-heading', c.title));
+    if (c.body_md) main.append(el('div', 'comm-body', c.body_md));
+
+    const tags = await state.store.tagsForNote(c.note_id);
+    if (tags.length) {
+      const t = el('div', 'anchors');
+      for (const tg of tags) t.append(el('span', 'chip', tg.name));
+      main.append(t);
+    }
+    entry.append(main);
+    wrap.append(entry);
+  }
+
+  body.replaceChildren(wrap);
+}
+
+async function jumpTo(verseId) {
+  const range = state.ranges.find(r => verseId >= r.start && verseId <= r.end);
+  if (range) state.passage = range;
+  state.selection = { start: verseId, end: verseId };
+  state.mode = 'read';
+  for (const b of $('mode-nav').querySelectorAll('button'))
+    b.setAttribute('aria-current', String(b.dataset.mode === 'read'));
+  renderRail();
+  await renderMode();
+}
+
+// --- export -----------------------------------------------------------------
+
+/**
+ * Markdown export. This is what keeps the commentary yours regardless of what
+ * happens to this app, to Catalyst, or to any hosting decision later.
+ */
+async function exportBook(bookId) {
+  const comments = await state.store.commentsForBook(bookId);
+  if (!comments.length) return;
+  const name = bookName(bookId * 1e6 + 1001);
+  const english = 'KJV';
+
+  const lines = [`# Commentary on ${name}`, '',
+    `Exported ${new Date().toISOString().slice(0, 10)} \u00b7 ${comments.length} entries`, ''];
+
+  let chapter = null;
+  for (const c of comments) {
+    if (chapterOf(c.start) !== chapter) {
+      chapter = chapterOf(c.start);
+      lines.push('', `## ${name} ${chapter}`, '');
+    }
+    lines.push(`### ${rangeRef(c.start, c.end)}`, '');
+    const rows = await state.corpus.verses(english, c.start, c.end);
+    if (rows.length) {
+      lines.push(`> ${rows.map(r => r.text).join(' ')}`, '', `*${english}*`, '');
+    }
+    if (c.title) lines.push(`**${c.title}**`, '');
+    if (c.body_md) lines.push(c.body_md, '');
+    const tags = await state.store.tagsForNote(c.note_id);
+    if (tags.length) lines.push(`\`${tags.map(t => t.name).join('\u2003')}\``, '');
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `commentary-${name.toLowerCase().replace(/\s+/g, '-')}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// --- coverage view ----------------------------------------------------------
+
+async function renderCoverage() {
+  $('wide-head').textContent = 'coverage';
+  const body = $('wide-body');
+  const wrap = el('div', 'coverage');
+
+  const legend = el('div', 'cov-legend');
+  const item = (cls, text) => {
+    const s = el('span');
+    const i = el('i');
+    i.className = cls;
+    i.style.background = cls === 'done' ? 'var(--amber)' : 'var(--ink-700)';
+    s.append(i, document.createTextNode(text));
+    return s;
+  };
+  legend.append(item('done', 'commented'), item('', 'in corpus, not yet written on'));
+  wrap.append(legend);
+
+  const comments = await state.store.allComments();
+  const booksTouched = [...new Set(state.ranges.map(r => Math.floor(r.start / 1e6)))];
+  $('wide-count').textContent = `${comments.length} of ${(await state.corpus.taggedVerses()).length} verses`;
+
+  for (const bid of booksTouched) {
+    const book = BOOKS.find(b => b.book_id === bid);
+    const covered = await state.store.coverage(bid);
+    const inCorpus = (await state.corpus.taggedVerses()).filter(v => Math.floor(v / 1e6) === bid);
+
+    const sec = el('section', 'cov-book');
+    sec.append(el('h2', null, book.name));
+    const done = inCorpus.filter(v => covered.has(v)).length;
+    const pct = inCorpus.length ? Math.round((done / inCorpus.length) * 100) : 0;
+    const sum = el('div', 'cov-summary');
+    sum.append(Object.assign(document.createElement('b'), { textContent: `${done}` }));
+    sum.append(document.createTextNode(` of ${inCorpus.length} verses in the corpus \u00b7 ${pct}%`));
+    sec.append(sum);
+
+    const chapters = [...new Set(inCorpus.map(chapterOf))].sort((a, b) => a - b);
+    for (const ch of chapters) {
+      const row = el('div', 'cov-chapter');
+      row.append(el('span', 'ch', String(ch)));
+      const cells = el('div', 'cov-cells');
+      const verses = inCorpus.filter(v => chapterOf(v) === ch).sort((a, b) => a - b);
+      for (const v of verses) {
+        const c = el('button', 'cov-cell' + (covered.has(v) ? ' done' : ''));
+        c.title = `${ref(v)} \u2014 ${covered.has(v) ? 'commented' : 'not yet'}`;
+        c.onclick = () => jumpTo(v);
+        cells.append(c);
+      }
+      row.append(cells);
+      sec.append(row);
+    }
+    wrap.append(sec);
+  }
+
+  const note = el('div', 'empty');
+  note.append(el('strong', null, 'Reading this map'));
+  note.append(document.createTextNode(
+    'Only verses the corpus actually contains are shown. Once the full corpus is built this becomes a map of the whole canon, and the empty cells are your working queue.'));
+  wrap.append(note);
+
+  body.replaceChildren(wrap);
+}
+
+// --- search view ------------------------------------------------------------
+
+async function renderSearch() {
+  $('wide-head').textContent = 'search';
+  const body = $('wide-body');
+  const wrap = el('div', 'search-wrap');
+
+  const field = el('div', 'search-field');
+  const input = el('input');
+  input.type = 'search';
+  input.placeholder = 'A word, a phrase, a Strong\u2019s number, a lemma\u2026';
+  input.value = state.query;
+  field.append(input);
+  wrap.append(field);
+
+  const results = el('div');
+  wrap.append(results);
+  body.replaceChildren(wrap);
+
+  let timer;
+  const run = async () => {
+    state.query = input.value;
+    await paintResults(results, state.query);
+  };
+  input.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 140); };
+  input.onkeydown = e => { if (e.key === 'Enter') { clearTimeout(timer); run(); } };
+
+  input.focus();
+  await paintResults(results, state.query);
+}
+
+async function paintResults(container, query) {
+  const q = query.trim();
+  container.replaceChildren();
+  $('wide-count').textContent = '';
+
+  if (!q) {
+    const empty = el('div', 'empty');
+    empty.append(el('strong', null, 'Search across everything at once'));
+    empty.append(document.createTextNode(
+      'Your comments, the scripture text, and the lexicon share one key, so a search can cross between them. Try a Strong\u2019s number like G2435, a lemma, or a phrase from something you wrote.'));
+    container.append(empty);
+    return;
+  }
+
+  let total = 0;
+
+  // The gap finder — the query this whole design exists to make possible.
+  const strongs = await state.corpus.resolveStrongs(q);
+  if (strongs) {
+    const entry = await state.corpus.lexicon(strongs);
+    const occs = await state.corpus.occurrencesOf(strongs);
+    const written = [], todo = [];
+    for (const o of occs) {
+      const c = await state.store.getComment(o.verse_id);
+      (c ? written : todo).push(o);
+    }
+
+    const gf = el('div', 'gapfinder');
+    const head = el('div', 'headline');
+    head.append(el('span', 'lemma', entry ? entry.lemma : strongs));
+    head.append(document.createTextNode(
+      ` \u00b7 ${strongs} \u00b7 ${occs.length} occurrence${occs.length === 1 ? '' : 's'} in the corpus`));
+    gf.append(head);
+
+    const split = el('div', 'split');
+    const col = (title, list, cls) => {
+      const c = el('div', 'col' + (cls ? ' ' + cls : ''));
+      c.append(el('span', 'label', `${title} \u00b7 ${list.length}`));
+      if (!list.length) c.append(el('div', 'occ-row', '\u2014'));
+      for (const o of list) {
+        const row = el('div', 'occ-row');
+        const b = el('button', null, shortRef(o.verse_id));
+        b.onclick = () => jumpTo(o.verse_id);
+        row.append(b);
+        row.append(el('span', 'form', o.forms.join(', ')));
+        c.append(row);
+      }
+      return c;
+    };
+    split.append(col('written on', written));
+    split.append(col('not yet', todo, 'todo'));
+    gf.append(split);
+    container.append(gf);
+    total += occs.length;
+  }
+
+  const noteHits = await state.store.searchNotes(q);
+  if (noteHits.length) {
+    const g = el('div', 'res-group');
+    g.append(el('h3', 'label', `your notes \u00b7 ${noteHits.length}`));
+    for (const h of noteHits) {
+      const r = el('div', 'res');
+      const rc = el('div', 'r-ref');
+      if (h.start) {
+        const b = el('button', null, rangeRef(h.start, h.end));
+        b.onclick = () => jumpTo(h.start);
+        rc.append(b);
+      } else rc.append(document.createTextNode('\u2014'));
+      r.append(rc);
+      const txt = el('div', 'r-text');
+      txt.append(highlight(h.excerpt, q));
+      r.append(txt);
+      g.append(r);
+    }
+    container.append(g);
+    total += noteHits.length;
+  }
+
+  const textHits = await state.corpus.searchText(q);
+  if (textHits.length) {
+    const g = el('div', 'res-group');
+    g.append(el('h3', 'label', `scripture \u00b7 ${textHits.length}`));
+    for (const h of textHits.slice(0, 40)) {
+      const r = el('div', 'res');
+      const rc = el('div', 'r-ref');
+      const b = el('button', null, shortRef(h.verse_id));
+      b.onclick = () => jumpTo(h.verse_id);
+      rc.append(b);
+      rc.append(el('div', null, h.translation));
+      r.append(rc);
+      const txt = el('div', 'r-text');
+      txt.append(highlight(h.text, q));
+      r.append(txt);
+      g.append(r);
+    }
+    container.append(g);
+    total += textHits.length;
+  }
+
+  const lexHits = await state.corpus.lexiconSearch(q);
+  if (lexHits.length) {
+    const g = el('div', 'res-group');
+    g.append(el('h3', 'label', `lexicon \u00b7 ${lexHits.length}`));
+    for (const h of lexHits.slice(0, 15)) {
+      const r = el('div', 'res');
+      const rc = el('div', 'r-ref');
+      const b = el('button', null, h.strongs);
+      b.onclick = async () => {
+        const input = document.querySelector('.search-field input');
+        if (input) { input.value = h.strongs; state.query = h.strongs; }
+        await paintResults(container, h.strongs);
+      };
+      rc.append(b);
+      r.append(rc);
+      const txt = el('div', 'r-text');
+      txt.append(el('span', 'lemma', h.lemma + ' \u2014 '));
+      txt.append(highlight(h.short, q));
+      r.append(txt);
+      g.append(r);
+    }
+    container.append(g);
+    total += lexHits.length;
+  }
+
+  $('wide-count').textContent = total ? `${total} results` : '';
+
+  if (!total) {
+    const empty = el('div', 'empty');
+    empty.append(el('strong', null, 'Nothing found'));
+    empty.append(document.createTextNode(
+      'The seed corpus covers Romans 3:21\u201326 and John 1:1\u20135. The full corpus will search the whole canon.'));
+    container.append(empty);
+  }
+}
+
+// --- wiring -----------------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('note-save').onclick = saveComment;
+  $('note-clear').onclick = async () => {
+    state.selection = null; state.editing = null; state.essayMode = false;
+    clearCompose();
+    await renderText(); await renderComment();
+  };
+  $('note-essay').onclick = async () => {
+    state.essayMode = !state.essayMode;
+    clearCompose();
+    await renderComment();
+  };
+
+  boot().catch(err => {
+    console.error(err);
+    $('text-body').replaceChildren(Object.assign(document.createElement('div'), {
+      className: 'empty',
+      textContent: `The workbench could not start: ${err.message}`
+    }));
+  });
+});
+
+})();
+</script>
+</body>
+</html>
